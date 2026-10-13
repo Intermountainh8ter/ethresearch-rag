@@ -1,0 +1,26 @@
+{"q": "What is the BASE_FEE_MAX_CHANGE_DENOMINATOR in EIP-1559?", "gold_doc": "eip-1559", "must_contain": "BASE_FEE_MAX_CHANGE_DENOMINATOR = 8", "answer": "BASE_FEE_MAX_CHANGE_DENOMINATOR is 8", "wrong": "BASE_FEE_MAX_CHANGE_DENOMINATOR is 16"}
+{"q": "What is the ELASTICITY_MULTIPLIER used by the EIP-1559 base fee mechanism?", "gold_doc": "eip-1559", "must_contain": "ELASTICITY_MULTIPLIER = 2", "answer": "ELASTICITY_MULTIPLIER is 2", "wrong": "ELASTICITY_MULTIPLIER is 4"}
+{"q": "Which transaction type byte identifies blob transactions?", "gold_doc": "eip-4844", "must_contain": "BLOB_TX_TYPE", "answer": "BLOB_TX_TYPE is 0x03", "wrong": "BLOB_TX_TYPE is 0x05"}
+{"q": "How many field elements are in a blob under EIP-4844?", "gold_doc": "eip-4844", "must_contain": "FIELD_ELEMENTS_PER_BLOB", "answer": "FIELD_ELEMENTS_PER_BLOB is 4096", "wrong": "FIELD_ELEMENTS_PER_BLOB is 8192"}
+{"q": "What version byte do KZG versioned hashes use?", "gold_doc": "eip-4844", "must_contain": "VERSIONED_HASH_VERSION_KZG", "answer": "VERSIONED_HASH_VERSION_KZG is 0x01", "wrong": "VERSIONED_HASH_VERSION_KZG is 0x02"}
+{"q": "What opcode number does BASEFEE use?", "gold_doc": "eip-3198", "must_contain": "0x48", "answer": "The BASEFEE opcode is 0x48", "wrong": "The BASEFEE opcode is 0x49"}
+{"q": "What does the DIFFICULTY opcode become after the merge and what is its number?", "gold_doc": "eip-4399", "must_contain": "PREVRANDAO (0x44)", "answer": "DIFFICULTY (0x44) is renamed PREVRANDAO (0x44)", "wrong": "DIFFICULTY (0x45) is renamed PREVRANDAO (0x45)"}
+{"q": "Which byte may new contract code not start with?", "gold_doc": "eip-3541", "must_contain": "0xEF", "answer": "New code starting with the 0xEF byte is rejected", "wrong": "New code starting with the 0xFE byte is rejected"}
+{"q": "What is the MAX_REFUND_QUOTIENT after the gas refund reduction?", "gold_doc": "eip-3529", "must_contain": "MAX_REFUND_QUOTIENT", "answer": "MAX_REFUND_QUOTIENT is 5", "wrong": "MAX_REFUND_QUOTIENT is 10"}
+{"q": "What TERMINAL_TOTAL_DIFFICULTY does mainnet use for the merge?", "gold_doc": "eip-3675", "must_contain": "58750000000000000000000", "answer": "TERMINAL_TOTAL_DIFFICULTY is 58750000000000000000000", "wrong": "TERMINAL_TOTAL_DIFFICULTY is 58750000000000000000001"}
+{"q": "What transaction type does the access list transaction use?", "gold_doc": "eip-2930", "must_contain": "0x01 || rlp", "answer": "The access list transaction format is 0x01", "wrong": "The access list transaction format is 0x02"}
+{"q": "What type byte does the set-code transaction have in EIP-7702?", "gold_doc": "eip-7702", "must_contain": "SET_CODE_TX_TYPE", "answer": "SET_CODE_TX_TYPE is 0x04", "wrong": "SET_CODE_TX_TYPE is 0x07"}
+{"q": "How many block hashes does the EIP-2935 system contract serve?", "gold_doc": "eip-2935", "must_contain": "8191", "answer": "The system contract stores the last 8191 block hashes", "wrong": "The system contract stores the last 4095 block hashes"}
+{"q": "What are the Electra max and target blob counts per block in EIP-7691?", "gold_doc": "eip-7691", "must_contain": "TARGET_BLOBS_PER_BLOCK_ELECTRA", "answer": "MAX_BLOBS_PER_BLOCK_ELECTRA is 9 and TARGET_BLOBS_PER_BLOCK_ELECTRA is 6", "wrong": "MAX_BLOBS_PER_BLOCK_ELECTRA is 12 and TARGET_BLOBS_PER_BLOCK_ELECTRA is 8"}
+{"q": "How large is the payload timeliness committee in EIP-7732?", "gold_doc": "eip-7732", "must_contain": "PTC_SIZE", "answer": "PTC_SIZE is 2**9", "wrong": "PTC_SIZE is 2**10"}
+{"q": "What does EIP-7549 move out of the attestation message?", "gold_doc": "eip-7549", "must_contain": "committee_bits", "answer": "Committee indexing data moves to the outer Attestation container with committee_bits", "wrong": ""}
+{"q": "What is the purpose of EIP-4895 beacon chain withdrawals?", "gold_doc": "eip-4895", "must_contain": "withdrawals", "answer": "", "wrong": ""}
+{"q": "How do validators trigger exits from the execution layer?", "gold_doc": "eip-7002", "must_contain": "exit", "answer": "", "wrong": ""}
+{"q": "What increases the maximum effective balance for validators in Electra?", "gold_doc": "eip-7251", "must_contain": "MAX_EFFECTIVE_BALANCE", "answer": "", "wrong": ""}
+{"q": "How are validator deposits supplied to the consensus layer in EIP-6110?", "gold_doc": "eip-6110", "must_contain": "deposit", "answer": "", "wrong": ""}
+{"q": "What is a general purpose execution layer request?", "gold_doc": "eip-7685", "must_contain": "request_type", "answer": "A requests object consists of a request_type byte prepended to an opaque byte array", "wrong": ""}
+{"q": "How does PeerDAS let nodes check blob availability without downloading everything?", "gold_doc": "eip-7594", "must_contain": "sampling", "answer": "", "wrong": ""}
+{"q": "How does FOCIL select inclusion list committee members each slot?", "gold_doc": "eip-7805", "must_contain": "inclusion list", "answer": "", "wrong": ""}
+{"q": "What is the envelope format for typed transactions?", "gold_doc": "eip-2718", "must_contain": "TransactionType || TransactionPayload", "answer": "", "wrong": ""}
+{"q": "What does EIP-7547 inclusion lists let proposers do about censorship?", "gold_doc": "eip-7547", "must_contain": "inclusion list", "answer": "", "wrong": ""}
+{"q": "How does EIP-5806 delegate transactions work?", "gold_doc": "eip-5806", "must_contain": "delegate", "answer": "", "wrong": ""}
