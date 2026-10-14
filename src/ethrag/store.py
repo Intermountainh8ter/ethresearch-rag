@@ -46,7 +46,8 @@ def save_index(index: HybridIndex, path: str | Path) -> Path:
         "chunks": len(index.chunks),
         "docs": len({c.doc for c in index.chunks}),
         "bm25": {"k1": index.bm25.k1, "b": index.bm25.b, "title_boost": index.bm25.title_boost,
-                 "section_boost": index.bm25.section_boost},
+                 "section_boost": index.bm25.section_boost,
+                 "drop_stopwords": index.bm25.drop_stopwords},
         "hybrid": {"rrf_k": index.rrf_k, "bm25_weight": index.bm25_weight,
                    "eip_boost": index.eip_boost, "eip_mode": index.eip_mode, "top": index.top},
         "embedder": {"kind": "hashed", "dim": emb.dim} if isinstance(emb, HashedEmbedder)

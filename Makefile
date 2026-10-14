@@ -20,7 +20,7 @@ eval:
 	$(PY) evals/run_evals.py --show-misses
 
 eval-gate:
-	$(PY) evals/run_evals.py --min-test-hybrid-recall5 0.80
+	$(PY) evals/run_evals.py --min-test-recall5 0.80
 
 judge:
 	$(PY) evals/run_judge.py

@@ -16,7 +16,7 @@ jobs:
       - run: ruff check .
       - run: pytest -q --cov=ethrag --cov-report=term
       # Eval gate on the HELD-OUT split only (fusion/reranker weights are fit on train).
-      - run: python evals/run_evals.py --min-test-hybrid-recall5 0.80
+      - run: python evals/run_evals.py --min-test-recall5 0.80
       - run: python -m ethrag.cli build-index --data data --out .index
       - run: python -m ethrag.cli ask --index .index "What opcode number does BASEFEE use?"
   docker:

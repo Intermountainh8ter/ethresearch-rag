@@ -67,9 +67,13 @@ class BM25:
 
     def __init__(self, chunks: Sequence[Chunk], k1: float = 1.5, b: float = 0.75,
                  title_boost: float = 2.0, section_boost: float = 1.0,
-                 arrays: dict[str, np.ndarray] | None = None, vocab: list[str] | None = None):
+                 arrays: dict[str, np.ndarray] | None = None, vocab: list[str] | None = None,
+                 drop_stopwords: bool = True):
         self.chunks = list(chunks)
         self.k1, self.b, self.title_boost, self.section_boost = k1, b, title_boost, section_boost
+        # Query-side only (the index keeps every term). Chosen on the TRAIN split: stop words add
+        # noise to the sum of idf-weighted term scores (docs/EVALUATION.md, "BM25 query stop words").
+        self.drop_stopwords = drop_stopwords
         if arrays is not None and vocab is not None:
             self._load(arrays, vocab)
         else:
@@ -125,9 +129,16 @@ class BM25:
         return ({"bm25_idx": self.idx, "bm25_tf": self.tf, "bm25_indptr": self.indptr,
                  "bm25_idf": self.idf, "bm25_len": self.len}, vocab)
 
+    def query_terms(self, query: str) -> list[str]:
+        terms = tokenize(query)
+        if self.drop_stopwords:
+            kept = [t for t in terms if t not in STOPWORDS]
+            return kept or terms  # a query made only of stop words still gets scored
+        return terms
+
     def scores(self, query: str) -> np.ndarray:
         s = np.zeros(len(self.chunks), dtype=np.float32)
-        for w in tokenize(query):
+        for w in self.query_terms(query):
             t = self.vocab.get(w)
             if t is None:
                 continue
@@ -303,7 +314,7 @@ class HybridIndex:
     """Weighted RRF of BM25 and dense rankings with EIP-number boosting and graph expansion."""
 
     def __init__(self, chunks: Sequence[Chunk], embedder: Embedder | None = None, rrf_k: int = 60,
-                 bm25_weight: float = 0.5, eip_boost: float = 1.0, eip_mode: str = "boost",
+                 bm25_weight: float = 0.5, eip_boost: float = 4.0, eip_mode: str = "boost",
                  top: int = 200, bm25: BM25 | None = None, dense: DenseIndex | None = None,
                  graph: CitationGraph | None = None):
         if eip_mode not in ("boost", "restrict", "off"):

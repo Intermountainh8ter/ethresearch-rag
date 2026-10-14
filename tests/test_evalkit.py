@@ -131,3 +131,68 @@ def test_chunk_import_keeps_gold_chunk_helpers_pure():
     chunks = [Chunk("eip-1#000", "eip-1", "t", "s", "Has NEEDLE inside")]
     assert gold_chunk_ids(chunks, {"gold": [["eip-1", "needle"]]}) == {"eip-1#000"}
     assert gold_chunk_ids(chunks, {"gold": [["eip-2", "needle"]]}) == set()
+
+
+# ------------------------------------------------------------------ nDCG, per-question rows, bootstrap
+def test_ndcg_rewards_ranking_all_gold_chunks_early():
+    from ethrag.evalkit import aggregate, per_question
+
+    qs = [{"id": "a", "q": "qa", "gold_docs": ["d"]}]
+    gold = {"a": {"d#1", "d#2"}}
+    best = per_question(lambda q, k: ["d#1", "d#2", "x#0"], qs, gold)[0]["ndcg"]
+    late = per_question(lambda q, k: ["x#0", "d#1", "d#2"], qs, gold)[0]["ndcg"]
+    one = per_question(lambda q, k: ["d#1", "x#0", "y#0"], qs, gold)[0]["ndcg"]
+    ideal = 1 + 1 / 1.5849625007211562  # 1/log2(2) + 1/log2(3)
+    assert best == pytest.approx(1.0)
+    assert one == pytest.approx(1 / ideal)  # only one of the two gold chunks, but at rank 1
+    assert late == pytest.approx((1 / 1.5849625007211562 + 0.5) / ideal)  # both, at ranks 2 and 3
+    assert one < late < best
+    assert aggregate([], (1,)) == {}
+    miss = per_question(lambda q, k: ["x#0"], qs, gold)[0]
+    assert miss["ndcg"] == 0.0 and miss["rr"] == 0.0 and miss["first"] is None
+
+
+def test_ndcg_exact_value_for_single_gold_at_rank_two():
+    from ethrag.evalkit import retrieval_metrics
+
+    qs = [{"id": "a", "q": "qa", "gold_docs": ["d"]}]
+    m = retrieval_metrics(lambda q, k: ["x#0", "d#1"], qs, {"a": {"d#1"}})
+    assert m["nDCG@10"] == pytest.approx(1 / 1.5849625007211562)  # 1/log2(3)
+    assert m["MRR@10"] == 0.5
+
+
+def test_aggregate_reports_docset_only_for_multihop_rows():
+    from ethrag.evalkit import aggregate, per_question
+
+    qs = [{"id": "a", "q": "qa", "gold_docs": ["d1"]}, {"id": "b", "q": "qb", "gold_docs": ["d1", "d2"]}]
+    gold = {"a": {"d1#1"}, "b": {"d1#1", "d2#1"}}
+    rows = per_question(lambda q, k: ["d1#1", "d2#1"], qs, gold, ks=(1, 2), depth=2)
+    assert "docset@1" not in rows[0] and rows[1]["docset@1"] == 0.0 and rows[1]["docset@2"] == 1.0
+    agg = aggregate(rows, (1, 2), depth=2)
+    assert agg["multihop_n"] == 1 and agg["docset@2"] == 1.0 and agg["nDCG@2"] > 0
+
+
+def test_paired_bootstrap_detects_a_clear_difference_and_a_null_one():
+    from ethrag.evalkit import metric_vector, paired_bootstrap
+
+    a = [1.0] * 40 + [0.0] * 10
+    b = [0.0] * 10 + [1.0] * 40  # same mean as ``a``, different questions
+    d, lo, hi = paired_bootstrap(a, b, n_boot=500, seed=1)
+    assert d == pytest.approx(0.0) and lo < 0 < hi  # same mean, so no significant difference
+    d, lo, hi = paired_bootstrap([1.0] * 50, [0.0] * 25 + [1.0] * 25, n_boot=500, seed=1)
+    assert d == pytest.approx(0.5) and lo > 0
+    assert paired_bootstrap(a, b, n_boot=200, seed=3) == paired_bootstrap(a, b, n_boot=200, seed=3)
+    with pytest.raises(ValueError):
+        paired_bootstrap([1.0], [1.0, 0.0])
+    with pytest.raises(ValueError):
+        paired_bootstrap([], [])
+    assert metric_vector([{"R@5": 1}, {"R@5": 0.0}], "R@5") == [1.0, 0.0]
+
+
+def test_stored_split_overrides_the_computed_one(tmp_path):
+    qs = [{"id": f"q{i}", "type": "constant", "split": "test" if i % 4 == 0 else "train"} for i in range(20)]
+    train, test = split_questions(qs)
+    assert [q["id"] for q in test] == ["q0", "q4", "q8", "q12", "q16"] and len(train) == 15
+    qs[3]["split"] = "dev"  # an unknown value means the field is not trusted: fall back to computing
+    train2, test2 = split_questions(qs)
+    assert len(train2) + len(test2) == 20 and test2 != test

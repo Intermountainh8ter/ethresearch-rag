@@ -15,6 +15,7 @@ computation for files without the field.
 from __future__ import annotations
 
 import json
+import math
 import random
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -94,39 +95,82 @@ def gold_map(chunks: Sequence[Chunk], questions: Sequence[dict]) -> dict[str, se
 SearchFn = Callable[[str, int], list[str]]  # (query, k) -> ranked chunk ids
 
 
-def retrieval_metrics(search: SearchFn, questions: Sequence[dict], gold: dict[str, set[str]],
-                      ks: Sequence[int] = (1, 3, 5, 10), depth: int = 10) -> dict[str, float]:
-    """R@k = fraction of questions with a gold chunk in the top k; MRR over the top ``depth``.
+def dcg(ranked_relevance: Sequence[int]) -> float:
+    return sum(rel / math.log2(i + 2) for i, rel in enumerate(ranked_relevance))
 
-    For multi-hop questions ``docset@k`` is the fraction whose top-k results cover *every*
-    gold document (chunk-level recall is still reported against the union of gold chunks).
+
+def per_question(search: SearchFn, questions: Sequence[dict], gold: dict[str, set[str]],
+                 ks: Sequence[int] = (1, 3, 5, 10), depth: int = 10) -> list[dict]:
+    """One outcome row per question: first-hit rank, reciprocal rank, nDCG and hit flags.
+
+    ``ndcg`` is binary-relevance nDCG@``depth`` against the *set* of gold chunks, so a question
+    with several equivalent gold chunks rewards ranking all of them early. For multi-hop
+    questions ``docset@k`` is 1 when the top-k results cover every gold document.
     """
-    n = len(questions)
-    if n == 0:
-        return {}
-    hits = {k: 0 for k in ks}
-    docset = {k: 0 for k in ks}
-    rr = 0.0
-    multihop = 0
+    rows = []
     for q in questions:
         ranked = search(q["q"], max(max(ks), depth))
         gold_ids = gold[q["id"]]
         first = next((r for r, cid in enumerate(ranked, 1) if cid in gold_ids), None)
-        if first is not None and first <= depth:
-            rr += 1 / first
+        top = ranked[:depth]
+        ideal = dcg([1] * min(len(gold_ids), depth))
+        row: dict = {
+            "id": q["id"], "type": q.get("type", ""), "first": first,
+            "rr": 1 / first if first is not None and first <= depth else 0.0,
+            "ndcg": dcg([int(cid in gold_ids) for cid in top]) / ideal if ideal else 0.0,
+        }
         for k in ks:
-            hits[k] += bool(first is not None and first <= k)
+            row[f"R@{k}"] = float(first is not None and first <= k)
         if len(q["gold_docs"]) > 1:
-            multihop += 1
             for k in ks:
                 docs = {cid.split("#")[0] for cid in ranked[:k]}
-                docset[k] += set(q["gold_docs"]) <= docs
-    out = {f"R@{k}": hits[k] / n for k in ks}
-    out[f"MRR@{depth}"] = rr / n
-    if multihop:
-        out.update({f"docset@{k}": docset[k] / multihop for k in ks})
-        out["multihop_n"] = multihop
+                row[f"docset@{k}"] = float(set(q["gold_docs"]) <= docs)
+        rows.append(row)
+    return rows
+
+
+def aggregate(rows: Sequence[dict], ks: Sequence[int] = (1, 3, 5, 10), depth: int = 10) -> dict[str, float]:
+    """Mean of the per-question rows (see ``per_question``)."""
+    n = len(rows)
+    if n == 0:
+        return {}
+    out = {f"R@{k}": sum(r[f"R@{k}"] for r in rows) / n for k in ks}
+    out[f"MRR@{depth}"] = sum(r["rr"] for r in rows) / n
+    out[f"nDCG@{depth}"] = sum(r["ndcg"] for r in rows) / n
+    multi = [r for r in rows if f"docset@{ks[0]}" in r]
+    if multi:
+        out.update({f"docset@{k}": sum(r[f"docset@{k}"] for r in multi) / len(multi) for k in ks})
+        out["multihop_n"] = len(multi)
     return out
+
+
+def retrieval_metrics(search: SearchFn, questions: Sequence[dict], gold: dict[str, set[str]],
+                      ks: Sequence[int] = (1, 3, 5, 10), depth: int = 10) -> dict[str, float]:
+    """R@k = fraction of questions with a gold chunk in the top k; MRR and nDCG over ``depth``.
+
+    For multi-hop questions ``docset@k`` is the fraction whose top-k results cover *every*
+    gold document (chunk-level recall is still reported against the union of gold chunks).
+    """
+    return aggregate(per_question(search, questions, gold, ks, depth), ks, depth)
+
+
+def paired_bootstrap(a: Sequence[float], b: Sequence[float], n_boot: int = 2000, seed: int = 0,
+                     alpha: float = 0.05) -> tuple[float, float, float]:
+    """(mean(a-b), lo, hi): percentile bootstrap CI of the paired per-question difference."""
+    if len(a) != len(b) or not a:
+        raise ValueError("paired samples must be the same non-zero length")
+    diffs = [x - y for x, y in zip(a, b, strict=True)]
+    rng = random.Random(seed)
+    n = len(diffs)
+    means = sorted(sum(diffs[rng.randrange(n)] for _ in range(n)) / n for _ in range(n_boot))
+    lo = means[int((alpha / 2) * n_boot)]
+    hi = means[min(n_boot - 1, int((1 - alpha / 2) * n_boot))]
+    return sum(diffs) / n, lo, hi
+
+
+def metric_vector(rows: Sequence[dict], key: str) -> list[float]:
+    """Per-question values of ``key`` (``R@5``, ``rr``, ``ndcg``, ...) for ``paired_bootstrap``."""
+    return [float(r[key]) for r in rows]
 
 
 def misses(search: SearchFn, questions: Sequence[dict], gold: dict[str, set[str]], k: int = 5) -> list[dict]:

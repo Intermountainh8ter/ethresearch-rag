@@ -78,3 +78,11 @@ def test_saved_files_are_plain_npz_and_json(mini_index, tmp_path):
     assert {p.name for p in tmp_path.iterdir()} == {"arrays.npz", "chunks.json", "meta.json"}
     with np.load(tmp_path / "arrays.npz", allow_pickle=False) as z:
         assert "bm25_idx" in z.files and "dense_vals" in z.files
+
+
+def test_bm25_stopword_setting_survives_the_round_trip(mini_chunks, tmp_path):
+    from ethrag.retrieval import BM25
+
+    idx = HybridIndex(mini_chunks, bm25=BM25(mini_chunks, drop_stopwords=False))
+    save_index(idx, tmp_path)
+    assert load_index(tmp_path).bm25.drop_stopwords is False

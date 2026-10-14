@@ -117,3 +117,55 @@ def test_rerank_on_empty_index_returns_nothing():
     from ethrag.retrieval import HybridIndex
 
     assert LogisticReranker().rerank(HybridIndex([]), "anything", k=3) == []
+
+
+def test_build_pools_and_stack(mini_index, mini_chunks):
+    from ethrag.rerank import build_pools, stack_pools
+
+    qs, gold, gid = _gold(mini_chunks)
+    pools = build_pools(mini_index, qs, gold, pool=8)
+    assert [p.qid for p in pools] == ["q1", "q2"]
+    assert all(len(p.cand) == len(p.X) == len(p.y) <= 8 for p in pools)
+    assert all(mini_index.chunks[p.cand[int(p.y.argmax())]].id == gid for p in pools)
+    X, y = stack_pools(pools)
+    assert X.shape == (sum(len(p.cand) for p in pools), len(FEATURE_NAMES)) and y.sum() == 2
+    X0, y0 = stack_pools([])
+    assert X0.shape == (0, len(FEATURE_NAMES)) and y0.size == 0
+    assert build_pools(mini_index, [{"id": "z", "q": "qqqqqq"}], {}) == []
+
+
+def _fake_pools(n_docs=9, per=4, seed=0):
+    from ethrag.rerank import QuestionPool
+
+    rng = np.random.default_rng(seed)
+    pools, groups = [], []
+    for d in range(n_docs):
+        for i in range(per):
+            X = rng.normal(size=(10, len(FEATURE_NAMES)))
+            y = np.zeros(10)
+            y[0] = 1.0
+            X[0, 0] += 3.0  # the gold candidate has a clearly larger bm25 feature
+            pools.append(QuestionPool(f"q{d}-{i}", list(range(10)), X, y))
+            groups.append(f"doc{d}")
+    return pools, groups
+
+
+def test_cv_select_l2_returns_a_grid_value_and_scores_by_group():
+    from ethrag.rerank import cv_select_l2
+
+    pools, groups = _fake_pools()
+    best, scores = cv_select_l2(pools, groups, [1e-3, 1e-1, 10.0], folds=3, k=1)
+    assert best in scores and set(scores) == {1e-3, 1e-1, 10.0}
+    assert scores[best] >= 0.9 and all(0.0 <= v <= 1.0 for v in scores.values())
+    assert cv_select_l2(pools, groups, [1e-3, 1e-1], folds=3, k=1) == cv_select_l2(
+        pools, groups, [1e-3, 1e-1], folds=3, k=1)  # deterministic
+    with pytest.raises(ValueError, match="one group label per pool"):
+        cv_select_l2(pools, groups[:-1], [1e-3])
+
+
+def test_cv_with_one_group_has_no_usable_fold_and_scores_zero():
+    from ethrag.rerank import cv_select_l2
+
+    pools, _ = _fake_pools(n_docs=1, per=3)
+    best, scores = cv_select_l2(pools, ["only"] * len(pools), [0.1, 1.0], folds=3)
+    assert scores == {0.1: 0.0, 1.0: 0.0} and best == 1.0  # ties go to the stronger penalty

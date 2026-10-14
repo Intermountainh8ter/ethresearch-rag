@@ -1,41 +1,50 @@
-"""Retrieval + verifier evals over the bundled corpus with a seeded train/test split.
+"""Retrieval evals over the bundled corpus with a stored train/test split.
 
-    python evals/run_evals.py [--data DIR | --index DIR] [--min-test-hybrid-recall5 0.80]
+    python evals/run_evals.py [--data DIR | --index DIR] [--min-test-recall5 0.80]
                               [--show-misses] [--out evals/results.json]
                               [--reranker-out evals/artifacts/reranker.json]
 
-Everything that is *tuned* (fusion weight, reranker weights) is tuned on the TRAIN split only and
-reported on both splits. The CI gate reads the HELD-OUT hybrid R@5. See docs/EVALUATION.md.
+Everything that is *tuned* is tuned on the TRAIN split only: the fusion weight and EIP-boost of
+the hybrid retriever (grid sweep) and the logistic reranker (weights fit on train candidate
+pools, L2 strength chosen by document-grouped cross-validation inside train). Both splits are
+reported, the CI gate reads the HELD-OUT hybrid R@5, and paired bootstrap intervals say whether
+the differences between systems on the test split are distinguishable from noise.
+See docs/EVALUATION.md.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import random
 import sys
 import time
 from pathlib import Path
+
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from ethrag.evalkit import (
+    aggregate,
     format_table,
     gold_map,
     load_questions,
+    metric_vector,
     misses,
-    retrieval_metrics,
+    paired_bootstrap,
+    per_question,
     split_questions,
 )
 from ethrag.ingest import load_corpus
-from ethrag.pipeline import RagPipeline, extractive_answer
-from ethrag.rerank import LogisticReranker, training_pairs
-from ethrag.retrieval import BM25, HybridIndex
-from ethrag.verify import claim_tokens, verify_answer
+from ethrag.rerank import LogisticReranker, build_pools, cv_select_l2, stack_pools
+from ethrag.retrieval import HybridIndex
 
 KS = (1, 3, 5, 10)
-COLUMNS = ["R@1", "R@3", "R@5", "R@10", "MRR@10"]
-WEIGHTS = [round(0.1 * i, 1) for i in range(1, 10)]
+COLUMNS = ["R@1", "R@3", "R@5", "R@10", "MRR@10", "nDCG@10"]
+WEIGHTS = [round(0.1 * i, 1) for i in range(11)]
+BOOSTS = [0.0, 0.5, 1.0, 2.0, 4.0]
+L2_GRID = [1e-3, 1e-2, 1e-1, 1.0]
+POOL = 50
 
 
 def banner(title: str) -> None:
@@ -50,21 +59,51 @@ def build_index(a: argparse.Namespace) -> HybridIndex:
     return HybridIndex(load_corpus(a.data))
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
+class FusionCache:
+    """Per-query RRF vectors computed once, so a (w, boost) grid costs one fuse per cell."""
+
+    def __init__(self, index: HybridIndex, questions):
+        self.index = index
+        self.cache = {}
+        for q in questions:
+            rb, rd = index.rank_vectors(q["q"])
+            self.cache[q["q"]] = (rb, rd, index.plan(q["q"]).docs)
+
+    def search(self, w: float, boost: float):
+        def fn(query: str, k: int) -> list[str]:
+            rb, rd, docs = self.cache[query]
+            fused = self.index.fuse(rb, rd, docs, bm25_weight=w, eip_boost=boost, eip_mode="boost")
+            order = np.argsort(-fused, kind="stable")[:k]
+            return [self.index.chunks[i].id for i in order if fused[i] > 0]
+        return fn
+
+
+def graph_budget_search(index: HybridIndex, w: float, boost: float):
+    """Budget-neutral graph expansion: top-(k-e) hybrid hits + e `requires` neighbours."""
+    def fn(q: str, k: int) -> list[str]:
+        extra = 2 if k >= 5 else (1 if k >= 3 else 0)
+        hits = index.search(q, k - extra, expand_graph=extra > 0, extra=extra, bm25_weight=w,
+                            eip_boost=boost)
+        return [c.id for c, _ in hits]
+    return fn
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", default=str(ROOT / "data"))
     ap.add_argument("--index", default=None)
     ap.add_argument("--questions", default=str(ROOT / "evals" / "questions.jsonl"))
-    ap.add_argument("--min-test-hybrid-recall5", type=float, default=0.0)
+    ap.add_argument("--min-test-recall5", "--min-test-hybrid-recall5", dest="min_test_recall5",
+                    type=float, default=0.0, help="exit 1 if the hybrid retriever's TEST R@5 is lower")
     ap.add_argument("--show-misses", action="store_true")
+    ap.add_argument("--bootstrap", type=int, default=2000, help="bootstrap resamples (0 = skip)")
     ap.add_argument("--out", default=str(ROOT / "evals" / "results.json"))
     ap.add_argument("--reranker-out", default=str(ROOT / "evals" / "artifacts" / "reranker.json"))
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
 
     t0 = time.time()
     index = build_index(a)
     chunks = index.chunks
-    by_id = {c.id: c for c in chunks}
     qs = load_questions(a.questions)
     train, test = split_questions(qs)
     gold = gold_map(chunks, qs)
@@ -72,186 +111,157 @@ def main() -> int:
     if missing:
         print(f"ERROR: {len(missing)} questions have no gold chunk: {missing[:10]}")
         return 1
-    n_docs = len(index.graph.docs)
-    print(f"corpus: {n_docs} docs, {len(chunks)} chunks   questions: {len(qs)} "
+    if not train or not test:
+        print("ERROR: need at least one train and one test question")
+        return 1
+    print(f"corpus: {len(index.graph.docs)} docs, {len(chunks)} chunks   questions: {len(qs)} "
           f"(train {len(train)} / test {len(test)}; "
-          f"{sum(q['type'] == 'multihop' for q in qs)} multi-hop)   index built in {time.time() - t0:.1f}s")
-    results: dict = {"corpus": {"docs": n_docs, "chunks": len(chunks)},
-                     "questions": {"total": len(qs), "train": len(train), "test": len(test)}}
-
-    bm25, dense = BM25(chunks) if a.index else index.bm25, index.dense
+          f"{sum(q['type'] == 'multihop' for q in qs)} multi-hop)   index ready in {time.time() - t0:.1f}s")
+    results: dict = {
+        "corpus": {"docs": len(index.graph.docs), "chunks": len(chunks)},
+        "questions": {"total": len(qs), "train": len(train), "test": len(test),
+                      "multihop_train": sum(q["type"] == "multihop" for q in train),
+                      "multihop_test": sum(q["type"] == "multihop" for q in test)},
+    }
 
     def ids(hits):
         return [c.id for c, _ in hits]
 
-    systems = {
-        "bm25": lambda q, k: ids(bm25.search(q, k)),
-        "dense(hashed)": lambda q, k: ids(dense.search(q, k)),
-        "hybrid(rrf,w=0.5,no-boost)": lambda q, k: ids(index.search(q, k, bm25_weight=0.5, eip_mode="off")),
-        "hybrid+eip-boost": lambda q, k: ids(index.search(q, k, bm25_weight=0.5, eip_mode="boost")),
-        "hybrid+eip-restrict": lambda q, k: ids(index.search(q, k, bm25_weight=0.5, eip_mode="restrict")),
-    }
+    # ---- 1. tune the hybrid on TRAIN only ---------------------------------------------------
+    banner("fusion sweep on the TRAIN split (w = BM25 share of the RRF credit; boost = EIP-number boost)")
+    grid = []
+    cache = FusionCache(index, train)
+    for boost in BOOSTS:
+        for w in WEIGHTS:
+            grid.append({"w": w, "boost": boost,
+                         **aggregate(per_question(cache.search(w, boost), train, gold, KS), KS)})
+    # A "hybrid" must fuse both rankers, so the selection only considers 0 < w < 1; the pure
+    # BM25 (w=1) and pure dense (w=0) rows are still printed and reported as ablations below.
+    fused_cells = [r for r in grid if 0.0 < r["w"] < 1.0]
+    best = max(fused_cells, key=lambda r: (round(r["R@5"], 6), round(r["nDCG@10"], 6), -r["boost"]))
+    w_star, b_star = best["w"], best["boost"]
+    print(format_table([{"system": f"w={r['w']}", **r} for r in grid if r["boost"] == b_star], COLUMNS))
+    print(format_table([{"system": f"boost={r['boost']}", **r} for r in grid if r["w"] == w_star], COLUMNS))
+    print(f"chosen on train among 0<w<1: w*={w_star} boost*={b_star}   "
+          f"(R@5 {best['R@5']:.3f}, nDCG@10 {best['nDCG@10']:.3f}); "
+          f"best cell overall: w={max(grid, key=lambda r: (round(r['R@5'], 6), round(r['nDCG@10'], 6)))['w']}")
+    results["fusion"] = {"w": w_star, "boost": b_star, "grid_train": grid}
 
-    # ---- fusion weight sweep: TRAIN only ------------------------------------------------
-    banner("fusion weight sweep (train split only; w = BM25 share of the RRF credit)")
-    sweep_rows = []
-    for w in WEIGHTS:
-        m = retrieval_metrics(lambda q, k, w=w: ids(index.search(q, k, bm25_weight=w)), train, gold, KS)
-        sweep_rows.append({"system": f"w={w}", **m})
-    best = max(sweep_rows, key=lambda r: (r["R@5"], r["MRR@10"]))
-    best_w = float(best["system"].split("=")[1])
-    print(format_table(sweep_rows, COLUMNS))
-    print(f"chosen on train: w*={best_w}")
-    results["fusion_sweep_train"] = sweep_rows
-    results["fusion_weight"] = best_w
-    systems[f"hybrid+eip-boost(w*={best_w})"] = lambda q, k: ids(index.search(q, k, bm25_weight=best_w))
-
-    # ---- reranker: fit on TRAIN, evaluate on both ---------------------------------------
-    X, y = training_pairs(index, train, gold, pool=50)
-    reranker = LogisticReranker().fit(X, y)
+    # ---- 2. fit the reranker on TRAIN only ----------------------------------------------------
+    pools = build_pools(index, train, gold, pool=POOL)
+    doc_of = {q["id"]: q["gold_doc"] for q in train}
+    groups = [doc_of[p.qid] for p in pools]
+    best_l2, cv_scores = cv_select_l2(pools, groups, L2_GRID, folds=3, k=5)
+    X, y = stack_pools(pools)
+    reranker = LogisticReranker().fit(X, y, l2=best_l2)
     Path(a.reranker_out).parent.mkdir(parents=True, exist_ok=True)
     reranker.save(a.reranker_out)
-    systems["hybrid+reranker(train-fit)"] = lambda q, k: ids(reranker.rerank(index, q, k, pool=50))
-    results["reranker"] = {"train_pairs": len(y), "train_positives": int(y.sum()),
+    print(f"\nreranker: {len(y)} train candidates ({int(y.sum())} positive), L2={best_l2} chosen by "
+          f"grouped 3-fold CV on train {cv_scores}")
+    top = sorted(reranker.feature_weights().items(), key=lambda kv: -abs(kv[1]))[:6]
+    print("  largest standardised weights: " + ", ".join(f"{k}={v:+.2f}" for k, v in top))
+    results["reranker"] = {"train_candidates": len(y), "train_positives": int(y.sum()), "l2": best_l2,
+                           "cv_recall5": {str(k): v for k, v in cv_scores.items()},
                            "final_loss": reranker.history[-1] if reranker.history else None,
                            "weights": reranker.feature_weights(), "path": str(a.reranker_out)}
 
-    # ---- main tables -----------------------------------------------------------------------
+    # ---- 3. systems -----------------------------------------------------------------------------
+    headline = {
+        "bm25": lambda q, k: ids(index.bm25.search(q, k)),
+        "dense(hashed)": lambda q, k: ids(index.dense.search(q, k)),
+        "hybrid": lambda q, k: ids(index.search(q, k, bm25_weight=w_star, eip_boost=b_star)),
+        "hybrid+rerank": lambda q, k: ids(reranker.rerank(index, q, k, pool=POOL)),
+        "hybrid+graph": graph_budget_search(index, w_star, b_star),
+    }
+    ablation = {
+        "bm25+eip-boost": lambda q, k: ids(index.search(q, k, bm25_weight=1.0, eip_boost=b_star)),
+        "dense+eip-boost": lambda q, k: ids(index.search(q, k, bm25_weight=0.0, eip_boost=b_star)),
+        "hybrid(rrf w=0.5, no boost)": lambda q, k: ids(index.search(q, k, bm25_weight=0.5, eip_mode="off")),
+        "hybrid(rrf w=0.5, boost=1)": lambda q, k: ids(index.search(q, k, bm25_weight=0.5, eip_boost=1.0)),
+        "hybrid(w*, restrict to named EIP)": lambda q, k: ids(
+            index.search(q, k, bm25_weight=w_star, eip_mode="restrict")),
+    }
+    splits = {"train": train, "test": test}
+    rows_by: dict[str, dict[str, list[dict]]] = {s: {} for s in splits}
+    for s, split in splits.items():
+        for name, fn in {**headline, **ablation}.items():
+            rows_by[s][name] = per_question(fn, split, gold, KS)
+
     results["retrieval"] = {}
-    for split_name, split in (("train", train), ("test", test)):
-        banner(f"answer-chunk retrieval, {split_name} split (n={len(split)}; "
-               "hit = a retrieved chunk of the gold doc contains the answer text)")
-        rows = []
-        for name, fn in systems.items():
-            m = retrieval_metrics(fn, split, gold, KS)
-            rows.append({"system": name, **m})
-            if a.show_misses and split_name == "test" and name.startswith("hybrid+eip-boost("):
-                for miss in misses(fn, split, gold, 5):
-                    print(f"   miss [{name}] {miss['id']}: {miss['q']}  top={miss['top']}")
-        print(format_table(rows, COLUMNS))
-        results["retrieval"][split_name] = rows
-        for typ in ("constant", "concept", "multihop"):
-            sub = [q for q in split if q["type"] == typ]
-            if sub:
-                m = retrieval_metrics(systems[f"hybrid+eip-boost(w*={best_w})"], sub, gold, KS)
-                print(f"   by type [{typ:<8} n={len(sub):>3}] hybrid(w*): "
-                      + "  ".join(f"{c}={m[c]:.3f}" for c in COLUMNS))
-                results["retrieval"].setdefault(f"{split_name}_by_type", {})[typ] = m
+    for s, split in splits.items():
+        banner(f"retrieval, {s.upper()} split (n={len(split)}; hit = a retrieved chunk contains the gold text)")
+        table = [{"system": n, **aggregate(rows_by[s][n], KS)} for n in headline]
+        print(format_table(table, COLUMNS))
+        results["retrieval"][s] = table
+        if s == "test":
+            for typ in ("constant", "concept", "multihop"):
+                sub = [q for q in split if q["type"] == typ]
+                if not sub:
+                    continue
+                ids_sub = {q["id"] for q in sub}
+                line = []
+                for n in headline:
+                    m = aggregate([r for r in rows_by[s][n] if r["id"] in ids_sub], KS)
+                    line.append(f"{n}: R@5={m['R@5']:.3f}")
+                print(f"   by type [{typ} n={len(sub)}]  " + "  ".join(line))
+            tiers = sorted({q.get("tier") or f"{q.get('origin', 'seed')}-{q['type']}" for q in split})
+            print("   by tier (test R@5, hybrid vs bm25 vs hybrid+rerank):")
+            for tier in tiers:
+                sub = {q["id"] for q in split if (q.get("tier") or f"{q.get('origin', 'seed')}-{q['type']}") == tier}
+                cells = [aggregate([r for r in rows_by[s][n] if r["id"] in sub], KS)["R@5"]
+                         for n in ("bm25", "hybrid", "hybrid+rerank")]
+                print(f"     {tier:<16} n={len(sub):>3}  {cells[0]:.3f}  {cells[1]:.3f}  {cells[2]:.3f}")
+                results["retrieval"].setdefault("test_by_tier", {})[tier] = {
+                    "n": len(sub), "bm25": cells[0], "hybrid": cells[1], "hybrid+rerank": cells[2]}
+            if a.show_misses:
+                for miss in misses(headline["hybrid"], split, gold, 5):
+                    print(f"   miss [hybrid] {miss['id']}: {miss['q']}  top={miss['top']}")
 
-    # ---- multi-hop: document-set recall with and without graph expansion ---------------------
-    banner("multi-hop questions: doc-set recall (every gold doc appears in the top-k results)")
-    mh_rows = []
-    for split_name, split in (("train", train), ("test", test)):
-        mh = [q for q in split if q["type"] == "multihop"]
-        if not mh:
-            continue
-        variants = {
-            f"{split_name}: hybrid(w*) top-10": lambda q, k: ids(index.search(q, k, bm25_weight=best_w)),
-            f"{split_name}: hybrid(w*) top-8 + 2 graph neighbours": lambda q, k: ids(
-                index.search(q, max(1, k - 2), expand_graph=True, extra=2, bm25_weight=best_w)),
-            f"{split_name}: hybrid(w*) top-6 + 4 graph neighbours": lambda q, k: ids(
-                index.search(q, max(1, k - 4), expand_graph=True, extra=4, bm25_weight=best_w)),
-        }
-        for name, fn in variants.items():
-            m = retrieval_metrics(fn, mh, gold, (5, 10))
-            mh_rows.append({"system": name, "n": len(mh), "docset@5": m.get("docset@5", 0.0),
-                            "docset@10": m.get("docset@10", 0.0), "R@10": m["R@10"]})
-    print(format_table(mh_rows, ["n", "docset@5", "docset@10", "R@10"]))
-    results["multihop"] = mh_rows
+    banner("ablations (same tuned w*/boost*; shows where hybrid gains or loses against plain BM25)")
+    for s in splits:
+        print(f"[{s}]")
+        table = [{"system": n, **aggregate(rows_by[s][n], KS)} for n in ablation]
+        print(format_table(table, COLUMNS))
+        results["retrieval"][f"{s}_ablation"] = table
 
-    # ---- verifier ------------------------------------------------------------------------
-    banner("verifier (cite the gold chunk; all questions with a reference answer)")
-    v = {"accepted": 0, "answers": 0, "rejected_wrong": 0, "wrong": 0, "negated_rejected": 0,
-         "paraphrase_rejected": 0, "swap_leaks": 0}
-    leaks, false_rejects = [], []
-    rng = random.Random(7)
-    for q in qs:
-        if not q["answer"]:
-            continue
-        gchunks = [by_id[i] for i in sorted(gold[q["id"]])]
-        cite = next((c for c in gchunks if claim_tokens(q["answer"]) <= claim_tokens(c.text)), None)
-        if cite is None:  # multi-hop: tokens split across two docs -> cite both
-            cites = " ".join(f"[{c.id}]" for c in gchunks[:4])
-        else:
-            cites = f"[{cite.id}]"
-        ret = [c.id for c in gchunks]
-        v["answers"] += 1
-        r = verify_answer(f"{q['answer']} {cites}.", by_id, ret, question=q["q"],
-                          min_coverage=0.5, min_relevance=0.25)
-        v["accepted"] += r.ok
-        if not r.ok:
-            false_rejects.append((q["id"], r.issues[:2]))
-        if q["wrong"]:
-            v["wrong"] += 1
-            rw = verify_answer(f"{q['wrong']} {cites}.", by_id, ret, question=q["q"],
-                               min_coverage=0.5, min_relevance=0.25)
-            v["rejected_wrong"] += not rw.ok
-            if rw.ok:
-                leaks.append(q["id"])
-        negated = q["answer"].replace(" is ", " is not ", 1)
-        if negated != q["answer"]:
-            rn = verify_answer(f"{negated} {cites}.", by_id, ret, question=q["q"], min_coverage=0.5)
-            v["negated_rejected"] += not rn.ok
-            v.setdefault("negated", 0)
-            v["negated"] += 1
-        rp = verify_answer(f"The specification sets this parameter as described above {cites}.", by_id,
-                           ret, question=q["q"], min_coverage=0.5, min_relevance=0.0)
-        v["paraphrase_rejected"] += not rp.ok
-    uncited = not verify_answer("BASE_FEE_MAX_CHANGE_DENOMINATOR is 8.", by_id, ["eip-1559#000"]).ok
-    fabricated = not verify_answer("It is 8 [eip-1559#999].", by_id, ["eip-1559#000"]).ok
-    print(f"  correct answers accepted:            {v['accepted']}/{v['answers']}")
-    print(f"  wrong constants rejected:            {v['rejected_wrong']}/{v['wrong']}")
-    print(f"  negated correct answers rejected:    {v['negated_rejected']}/{v.get('negated', 0)}")
-    print(f"  no-token paraphrases rejected:       {v['paraphrase_rejected']}/{v['answers']}  (min_coverage=0.5)")
-    print(f"  uncited sentence rejected:           {uncited}")
-    print(f"  fabricated citation rejected:        {fabricated}")
-    if false_rejects:
-        print(f"  false rejections: {false_rejects[:5]}")
-    if leaks:
-        print(f"  leaks (wrong answer accepted): {leaks}")
-    results["verifier"] = {**v, "uncited_rejected": uncited, "fabricated_rejected": fabricated,
-                           "false_rejections": false_rejects, "leaks": leaks}
+    # ---- 4. multi-hop doc-set recall ----------------------------------------------------------------
+    banner("multi-hop questions: doc-set recall (every gold document appears in the top-k results)")
+    mh_table = []
+    for s in splits:
+        for n in headline:
+            m = aggregate([r for r in rows_by[s][n] if "docset@5" in r], KS)
+            if m:
+                mh_table.append({"system": f"{s}: {n}", "n": int(m["multihop_n"]),
+                                 "docset@5": m["docset@5"], "docset@10": m["docset@10"],
+                                 "R@10": m["R@10"]})
+    print(format_table(mh_table, ["n", "docset@5", "docset@10", "R@10"]))
+    results["multihop"] = mh_table
 
-    # ---- question relevance: can the extractive baseline pass while answering the wrong question?
-    banner("question-relevance check (extractive baseline, test split)")
-    pipe_plain = RagPipeline(chunks, index=index, min_relevance=0.0, min_coverage=0.5, k=5)
-    pipe_rel = RagPipeline(chunks, index=index, min_relevance=0.25, min_coverage=0.5, k=5)
-    rel = {"n": 0, "verified_plain": 0, "verified_rel": 0, "cites_gold_plain": 0, "cites_gold_rel": 0,
-           "wrongq_pass_plain": 0, "wrongq_pass_rel": 0}
-    shuffled = list(test)
-    rng.shuffle(shuffled)
-    for q, other in zip(test, shuffled):
-        rel["n"] += 1
-        ctx = pipe_plain.retrieve(q["q"])
-        ret = [c.id for c in ctx]
-        raw = extractive_answer(q["q"], ctx)
-        for name, p in (("plain", pipe_plain), ("rel", pipe_rel)):
-            r = p.verify(q["q"], raw, ret)
-            rel[f"verified_{name}"] += r.ok
-            rel[f"cites_gold_{name}"] += r.ok and bool(set(ret) & gold[q["id"]]) and any(
-                cid in gold[q["id"]] for cid in [m.strip("[]") for m in raw.split() if m.startswith("[")])
-        # answer generated for a *different* question, verified against this question
-        if other["id"] != q["id"]:
-            o_ctx = pipe_plain.retrieve(other["q"])
-            o_raw = extractive_answer(other["q"], o_ctx)
-            o_ret = [c.id for c in o_ctx]
-            rel["wrongq_pass_plain"] += pipe_plain.verify(q["q"], o_raw, o_ret).ok
-            rel["wrongq_pass_rel"] += pipe_rel.verify(q["q"], o_raw, o_ret).ok
-    print(f"  baseline answers verified:           plain {rel['verified_plain']}/{rel['n']}   "
-          f"with relevance check {rel['verified_rel']}/{rel['n']}")
-    print(f"  ...of which cite a gold chunk:       plain {rel['cites_gold_plain']}   "
-          f"with relevance check {rel['cites_gold_rel']}")
-    print(f"  wrong-question answers that pass:    plain {rel['wrongq_pass_plain']}/{rel['n']}   "
-          f"with relevance check {rel['wrongq_pass_rel']}/{rel['n']}")
-    results["relevance"] = rel
+    # ---- 5. significance on TEST ----------------------------------------------------------------------
+    results["bootstrap_test"] = {}
+    if a.bootstrap:
+        banner(f"paired bootstrap on the TEST split ({a.bootstrap} resamples, 95% CI of the difference)")
+        for left, right in (("hybrid", "bm25"), ("hybrid", "bm25+eip-boost"),
+                            ("hybrid+rerank", "hybrid"), ("hybrid+graph", "hybrid")):
+            for key, label in (("R@5", "R@5"), ("ndcg", "nDCG@10")):
+                d, lo, hi = paired_bootstrap(metric_vector(rows_by["test"][left], key),
+                                             metric_vector(rows_by["test"][right], key), a.bootstrap)
+                verdict = "better" if lo > 0 else ("worse" if hi < 0 else "not distinguishable")
+                print(f"  {left:<14} - {right:<15} {label:<8} {d:+.3f}  [{lo:+.3f}, {hi:+.3f}]  {verdict}")
+                results["bootstrap_test"][f"{left} - {right} {label}"] = {"diff": d, "lo": lo, "hi": hi,
+                                                                          "verdict": verdict}
 
-    test_r5 = next(r for r in results["retrieval"]["test"] if r["system"] == "hybrid+eip-boost")["R@5"]
-    results["gate"] = {"test_hybrid_r5": test_r5, "threshold": a.min_test_hybrid_recall5}
-    Path(a.out).write_text(json.dumps(results, indent=1) + "\n", encoding="utf-8")
-    print(f"\nwrote {a.out}   total {time.time() - t0:.1f}s")
-    if test_r5 < a.min_test_hybrid_recall5:
-        print(f"GATE FAILED: test hybrid R@5 {test_r5:.3f} < {a.min_test_hybrid_recall5}")
+    hybrid_r5 = next(r for r in results["retrieval"]["test"] if r["system"] == "hybrid")["R@5"]
+    results["gate"] = {"system": "hybrid", "test_r5": hybrid_r5, "threshold": a.min_test_recall5}
+    out = Path(a.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(results, indent=1) + "\n", encoding="utf-8")
+    print(f"\nwrote {out}   total {time.time() - t0:.1f}s")
+    if hybrid_r5 < a.min_test_recall5:
+        print(f"GATE FAILED: test hybrid R@5 {hybrid_r5:.3f} < {a.min_test_recall5}")
         return 1
+    if a.min_test_recall5:
+        print(f"gate ok: test hybrid R@5 {hybrid_r5:.3f} >= {a.min_test_recall5}")
     return 0
 
 

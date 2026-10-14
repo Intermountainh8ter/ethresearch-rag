@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -155,10 +156,20 @@ class LogisticReranker:
         return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
-def training_pairs(index: HybridIndex, questions: Sequence[dict], gold_ids: dict[str, set[str]],
-                   pool: int = 50) -> tuple[np.ndarray, np.ndarray]:
-    """Stack (features, label) rows over the candidate pool of every question."""
-    xs, ys = [], []
+@dataclass
+class QuestionPool:
+    """Candidate chunks of one question with their features and gold labels."""
+
+    qid: str
+    cand: list[int]
+    X: np.ndarray
+    y: np.ndarray
+
+
+def build_pools(index: HybridIndex, questions: Sequence[dict], gold_ids: dict[str, set[str]],
+                pool: int = 50) -> list[QuestionPool]:
+    """Feature matrix + labels over the fused top-``pool`` candidates of every question."""
+    out = []
     for q in questions:
         bm25, dense = index.bm25.scores(q["q"]), index.dense.scores(q["q"])
         fused = index.fused_scores(q["q"])
@@ -166,8 +177,52 @@ def training_pairs(index: HybridIndex, questions: Sequence[dict], gold_ids: dict
         if not cand:
             continue
         gold = gold_ids.get(q["id"], set())
-        xs.append(chunk_features(index, q["q"], cand, bm25, dense, fused))
-        ys.append(np.array([1.0 if index.chunks[i].id in gold else 0.0 for i in cand]))
-    if not xs:
+        out.append(QuestionPool(
+            q["id"], cand, chunk_features(index, q["q"], cand, bm25, dense, fused),
+            np.array([1.0 if index.chunks[i].id in gold else 0.0 for i in cand])))
+    return out
+
+
+def stack_pools(pools: Sequence[QuestionPool]) -> tuple[np.ndarray, np.ndarray]:
+    if not pools:
         return np.zeros((0, len(FEATURE_NAMES))), np.zeros(0)
-    return np.vstack(xs), np.concatenate(ys)
+    return np.vstack([p.X for p in pools]), np.concatenate([p.y for p in pools])
+
+
+def training_pairs(index: HybridIndex, questions: Sequence[dict], gold_ids: dict[str, set[str]],
+                   pool: int = 50) -> tuple[np.ndarray, np.ndarray]:
+    """Stack (features, label) rows over the candidate pool of every question."""
+    return stack_pools(build_pools(index, questions, gold_ids, pool))
+
+
+def cv_select_l2(pools: Sequence[QuestionPool], groups: Sequence[str], l2_grid: Sequence[float],
+                 folds: int = 3, k: int = 5, seed: int = 0, **fit_kw) -> tuple[float, dict[float, float]]:
+    """Pick the L2 strength by grouped k-fold CV on *training* pools only.
+
+    ``groups`` (one per pool, e.g. the gold document) never straddle a fold, so the score is the
+    recall@``k`` of the reranker on documents it was not fit on. Ties go to the stronger penalty.
+    Returns (best l2, {l2: mean CV recall@k}).
+    """
+    import random
+
+    if len(pools) != len(groups):
+        raise ValueError("one group label per pool is required")
+    names = sorted(set(groups))
+    random.Random(seed).shuffle(names)
+    fold_of = {g: i % folds for i, g in enumerate(names)}
+    scores: dict[float, float] = {}
+    for l2 in l2_grid:
+        hits, total = 0, 0
+        for f in range(folds):
+            tr = [p for p, g in zip(pools, groups, strict=True) if fold_of[g] != f]
+            te = [p for p, g in zip(pools, groups, strict=True) if fold_of[g] == f]
+            if not tr or not te:
+                continue
+            model = LogisticReranker().fit(*stack_pools(tr), l2=l2, **fit_kw)
+            for p in te:
+                top = np.argsort(-model.predict(p.X), kind="stable")[:k]
+                hits += bool(p.y[top].sum() > 0)
+                total += 1
+        scores[l2] = hits / total if total else 0.0
+    best = max(l2_grid, key=lambda v: (scores[v], v))
+    return best, scores

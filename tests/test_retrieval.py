@@ -186,3 +186,14 @@ def test_shared_neighbour_is_expanded_once(mini_index):
     res = mini_index.search("EIP-1559 EIP-4844 blob base fee", 2, expand_graph=True, extra=5)
     docs = [c.doc for c, _ in res]
     assert docs.count("eip-2718") <= 1 and len({c.id for c, _ in res}) == len(res)
+
+
+def test_bm25_drops_stop_words_from_the_query_only():
+    chunks = [mk(0, "the of is a an and"), mk(1, "blob transactions carry kzg commitments")]
+    on, off = BM25(chunks), BM25(chunks, drop_stopwords=False)
+    assert on.query_terms("What is the blob?") == ["blob"]
+    assert off.query_terms("What is the blob?") == ["what", "is", "the", "blob"]
+    assert on.query_terms("what is the") == ["what", "is", "the"]  # all-stop-word queries still score
+    assert on.search("what is the blob", 1)[0][0].id == "eip-1#001"
+    assert off.search("what is the blob", 1)[0][0].id == "eip-1#000"  # noise wins when stop words count
+    assert "the" in on.vocab  # the index itself still contains them
