@@ -2,7 +2,7 @@ PY ?= python
 PIP ?= pip
 INDEX ?= .index
 
-.PHONY: install test lint cov eval eval-gate judge index fetch serve mcp docker clean
+.PHONY: install test lint cov eval eval-gate verifier-eval questions judge index fetch serve mcp docker clean
 
 install:
 	$(PIP) install -e ".[dev]"
@@ -21,6 +21,13 @@ eval:
 
 eval-gate:
 	$(PY) evals/run_evals.py --min-test-recall5 0.80
+	$(PY) evals/run_verifier_eval.py --no-e2e --min-test-tpr 0.93 --max-test-fpr 0.08
+
+verifier-eval:
+	$(PY) evals/run_verifier_eval.py
+
+questions:
+	$(PY) evals/build_questions.py
 
 judge:
 	$(PY) evals/run_judge.py
