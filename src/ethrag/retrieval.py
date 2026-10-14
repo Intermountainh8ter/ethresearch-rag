@@ -353,7 +353,9 @@ class HybridIndex:
     def search(self, query: str, k: int = 5, expand_graph: bool = False, extra: int = 2,
                depth: int = 1, **kw) -> list[tuple[Chunk, float]]:
         fused = self.fused_scores(query, **kw)
-        results = _top(self.chunks, fused, k)
+        # A fused score of 0 means neither ranker surfaced the chunk (or "restrict" masked it):
+        # padding the list with such chunks would only add arbitrary text.
+        results = [(c, s) for c, s in _top(self.chunks, fused, k) if s > 0]
         if expand_graph and results:
             results += self.expand(results, fused, extra=extra, depth=depth)
         return results

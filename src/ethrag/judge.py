@@ -54,6 +54,8 @@ def parse_verdict(text: str) -> Verdict:
             return Verdict(correct, max(0.0, min(1.0, score)), str(d.get("rationale", "")))
         except (ValueError, TypeError, AttributeError):
             pass
+    if "{" in text:  # a broken/truncated JSON verdict must never be read as "correct"
+        return Verdict(False, 0.0, "unparseable verdict")
     low = text.lower()
     if re.search(r"\bcorrect\b", low) and not re.search(r"\b(incorrect|not correct|wrong)\b", low):
         return Verdict(True, 1.0, "unstructured verdict: 'correct'")
