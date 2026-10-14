@@ -9,8 +9,6 @@ Citation-verified retrieval-augmented Q&A over Ethereum specifications (EIPs, ER
   summary in ordinary words: the question, one chart, the finding, and why it
   matters. No background assumed.
 - [GLOSSARY.md](GLOSSARY.md) &mdash; every abbreviation this repo uses, defined.
-- [What does all this mean?](https://claude.ai/artifact/Mctu5EP8YgfjGx6fcCHDgs)
-  &mdash; the across-the-whole-project explainer, with all six repos on one page.
 specs, Flashbots docs). Generation is untrusted; a **deterministic verifier** decides whether a
 draft is released: every sentence must be cited, every citation must have been retrieved, and
 every number, hex value, `2**n` and `ALL_CAPS` identifier in the answer must be found in the
