@@ -17,6 +17,7 @@ import argparse
 import json
 import sys
 import time
+import pathlib
 from pathlib import Path
 
 import numpy as np
@@ -56,7 +57,15 @@ def build_index(a: argparse.Namespace) -> HybridIndex:
         from ethrag.store import load_index
 
         return load_index(a.index)
-    return HybridIndex(load_corpus(a.data))
+    # The dense side is swappable through the Embedder protocol. Default stays
+    # HashedEmbedder so the committed numbers reproduce with no extra deps; the
+    # neural option exists to answer whether a real embedder beats BM25 at all.
+    embedder = None
+    if getattr(a, "embedder", "hashed") == "neural":
+        from ethrag.retrieval import SentenceTransformerEmbedder
+
+        embedder = SentenceTransformerEmbedder(a.embedder_model)
+    return HybridIndex(load_corpus(a.data), embedder=embedder)
 
 
 class FusionCache:
@@ -95,6 +104,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--questions", default=str(ROOT / "evals" / "questions.jsonl"))
     ap.add_argument("--min-test-recall5", "--min-test-hybrid-recall5", dest="min_test_recall5",
                     type=float, default=0.0, help="exit 1 if the hybrid retriever's TEST R@5 is lower")
+    ap.add_argument("--embedder", choices=("hashed", "neural"), default="hashed",
+                    help="dense side of the hybrid: 'hashed' (default, no deps, what the "
+                         "committed numbers use) or 'neural' (BAAI/bge-small-en-v1.5 via "
+                         "sentence-transformers, through the Embedder protocol)")
+    ap.add_argument("--embedder-model", default="BAAI/bge-small-en-v1.5",
+                    help="model id when --embedder neural")
     ap.add_argument("--show-misses", action="store_true")
     ap.add_argument("--bootstrap", type=int, default=2000, help="bootstrap resamples (0 = skip)")
     ap.add_argument("--out", default=str(ROOT / "evals" / "results.json"))
@@ -126,6 +141,9 @@ def main(argv: list[str] | None = None) -> int:
 
     def ids(hits):
         return [c.id for c, _ in hits]
+
+    dense_label = ("dense(hashed)" if getattr(a, "embedder", "hashed") == "hashed"
+                   else f"dense({a.embedder_model})")
 
     # ---- 1. tune the hybrid on TRAIN only ---------------------------------------------------
     banner("fusion sweep on the TRAIN split (w = BM25 share of the RRF credit; boost = EIP-number boost)")
@@ -163,12 +181,20 @@ def main(argv: list[str] | None = None) -> int:
     results["reranker"] = {"train_candidates": len(y), "train_positives": int(y.sum()), "l2": best_l2,
                            "cv_recall5": {str(k): v for k, v in cv_scores.items()},
                            "final_loss": reranker.history[-1] if reranker.history else None,
-                           "weights": reranker.feature_weights(), "path": str(a.reranker_out)}
+                           "weights": reranker.feature_weights(),
+                           # Repo-relative so the result file reproduces identically on
+                           # any machine; prior absolute path broke diffing across hosts.
+                           "path": str(pathlib.Path(a.reranker_out).resolve().relative_to(ROOT))
+                               if pathlib.Path(a.reranker_out).resolve().is_relative_to(ROOT)
+                               else str(a.reranker_out)}
 
     # ---- 3. systems -----------------------------------------------------------------------------
     headline = {
         "bm25": lambda q, k: ids(index.bm25.search(q, k)),
-        "dense(hashed)": lambda q, k: ids(index.dense.search(q, k)),
+        # Label follows the embedder actually in use: publishing a table that
+        # says "hashed" while --embedder neural is set would misreport which
+        # retriever produced the numbers.
+        dense_label: lambda q, k: ids(index.dense.search(q, k)),
         "hybrid": lambda q, k: ids(index.search(q, k, bm25_weight=w_star, eip_boost=b_star)),
         "hybrid+rerank": lambda q, k: ids(reranker.rerank(index, q, k, pool=POOL)),
         "hybrid+graph": graph_budget_search(index, w_star, b_star),

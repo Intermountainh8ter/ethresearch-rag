@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns='http://www.w3.org/2000/svg' width='1000' height='872' viewBox='0 0 1000 872' font-family='Inter, Helvetica Neue, Arial, sans-serif'>
+<rect width='100%' height='100%' fill='#ffffff'/>
+<rect x='0' y='0' width='1000' height='7' fill='#1d4ed8'/>
+<text x='44.0' y='64.0' font-size='34' font-weight='700' fill='#13161a' text-anchor='start'>ethresearch-rag</text>
+<text x='44.0' y='90.0' font-size='16' font-weight='400' fill='#5b6472' text-anchor='start'>Does the expensive search method actually beat the cheap one?</text>
+<line x1='44.0' y1='106.0' x2='956.0' y2='106.0' stroke='#e3e7ec' stroke-width='1.5'/>
+<text x='44.0' y='140.0' font-size='13' font-weight='700' fill='#1d4ed8' letter-spacing='1.6'>THE QUESTION</text>
+<text x='44.0' y='180.4' font-size='21' font-weight='600' fill='#13161a' text-anchor='start'>When an AI answers from documents, it first has to find the</text>
+<text x='44.0' y='210.9' font-size='21' font-weight='600' fill='#13161a' text-anchor='start'>right page. The fashionable way uses a neural network. The old</text>
+<text x='44.0' y='241.3' font-size='21' font-weight='600' fill='#13161a' text-anchor='start'>way counts words. Is the fashionable way better?</text>
+<text x='44.0' y='275.3' font-size='13' font-weight='700' fill='#1d4ed8' letter-spacing='1.6'>WHAT WE DID</text>
+<text x='44.0' y='308.5' font-size='16' font-weight='400' fill='#5b6472' text-anchor='start'>We searched 17,387 pieces of Ethereum technical documentation with four methods and</text>
+<text x='44.0' y='331.7' font-size='16' font-weight='400' fill='#5b6472' text-anchor='start'>measured how often the right page appeared in the top five results. The questions were</text>
+<text x='44.0' y='354.9' font-size='16' font-weight='400' fill='#5b6472' text-anchor='start'>split in advance, and the test half was scored exactly once.</text>
+<text x='44.0' y='384.9' font-size='15' font-weight='700' fill='#13161a' text-anchor='start'>How often the right page landed in the top 5 (out of 151 questions)</text>
+<text x='266.0' y='437.9' font-size='14' font-weight='400' fill='#13161a' text-anchor='end'>Counting words (the cheap way)</text>
+<rect x='280.0' y='421.9' width='526.0' height='22.0' rx='4' fill='#f1f4f8'/>
+<rect x='280.0' y='421.9' width='414.5' height='22.0' rx='4' fill='#1d4ed8'/>
+<text x='820.0' y='437.9' font-size='14' font-weight='700' fill='#13161a' text-anchor='start'>79%</text>
+<text x='266.0' y='471.9' font-size='14' font-weight='400' fill='#13161a' text-anchor='end'>Neural network alone</text>
+<rect x='280.0' y='455.9' width='526.0' height='22.0' rx='4' fill='#f1f4f8'/>
+<rect x='280.0' y='455.9' width='296.1' height='22.0' rx='4' fill='#b91c1c'/>
+<text x='820.0' y='471.9' font-size='14' font-weight='700' fill='#13161a' text-anchor='start'>56%</text>
+<text x='266.0' y='505.9' font-size='14' font-weight='400' fill='#13161a' text-anchor='end'>Both combined</text>
+<rect x='280.0' y='489.9' width='526.0' height='22.0' rx='4' fill='#f1f4f8'/>
+<rect x='280.0' y='489.9' width='428.5' height='22.0' rx='4' fill='#1d4ed8'/>
+<text x='820.0' y='505.9' font-size='14' font-weight='700' fill='#13161a' text-anchor='start'>81%</text>
+<text x='266.0' y='539.9' font-size='14' font-weight='400' fill='#13161a' text-anchor='end'>Both, plus a re-ranking pass</text>
+<rect x='280.0' y='523.9' width='526.0' height='22.0' rx='4' fill='#f1f4f8'/>
+<rect x='280.0' y='523.9' width='484.2' height='22.0' rx='4' fill='#15803d'/>
+<text x='820.0' y='539.9' font-size='14' font-weight='700' fill='#13161a' text-anchor='start'>92%</text>
+<text x='44.0' y='560.9' font-size='12.5' font-weight='400' fill='#5b6472' text-anchor='start'>Swapping the cheap stand-in for a real neural network changed the combined score by exactly nothing: 81.46% before, 81.46% after.</text>
+<text x='44.0' y='594.9' font-size='13' font-weight='700' fill='#1d4ed8' letter-spacing='1.6'>WHAT WE FOUND</text>
+<text x='44.0' y='632.9' font-size='30' font-weight='700' fill='#1d4ed8' text-anchor='start'>The expensive part earned nothing.</text>
+<text x='44.0' y='662.9' font-size='16.5' font-weight='400' fill='#13161a' text-anchor='start'>The neural search was worse than word-counting on its own, and adding it to the</text>
+<text x='44.0' y='686.8' font-size='16.5' font-weight='400' fill='#13161a' text-anchor='start'>combination moved the headline score by zero. Only the re-ranking pass clearly</text>
+<text x='44.0' y='710.7' font-size='16.5' font-weight='400' fill='#13161a' text-anchor='start'>helped. A "knowledge graph" layer the system also offers made results slightly</text>
+<text x='44.0' y='734.6' font-size='16.5' font-weight='400' fill='#13161a' text-anchor='start'>worse.</text>
+<text x='44.0' y='768.6' font-size='13' font-weight='700' fill='#1d4ed8' letter-spacing='1.6'>WHY IT MATTERS</text>
+<text x='44.0' y='802.6' font-size='16.5' font-weight='400' fill='#13161a' text-anchor='start'>Three of the four fancy components were decoration. Measuring each one separately is</text>
+<text x='44.0' y='826.5' font-size='16.5' font-weight='400' fill='#13161a' text-anchor='start'>how you find that out — and it is the opposite of what most write-ups report.</text>
+</svg>

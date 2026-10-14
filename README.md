@@ -1,6 +1,14 @@
 # ethrag
 
 Citation-verified retrieval-augmented Q&A over Ethereum specifications (EIPs, ERCs, consensus
+
+
+## For the lay reader
+
+- [docs/diagrams/explainer.svg](docs/diagrams/explainer.svg) &mdash; a one-page
+  summary in ordinary words: the question, one chart, the finding, and why it
+  matters. No background assumed.
+- [GLOSSARY.md](GLOSSARY.md) &mdash; every abbreviation this repo uses, defined.
 specs, Flashbots docs). Generation is untrusted; a **deterministic verifier** decides whether a
 draft is released: every sentence must be cited, every citation must have been retrieved, and
 every number, hex value, `2**n` and `ALL_CAPS` identifier in the answer must be found in the
