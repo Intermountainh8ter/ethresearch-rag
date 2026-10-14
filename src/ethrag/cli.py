@@ -12,6 +12,10 @@ DEFAULT_DATA = Path(__file__).resolve().parents[2] / "data"
 SUBCOMMANDS = ("ask", "build-index", "serve", "mcp", "related", "stats")
 
 
+class CliError(Exception):
+    """A user-facing failure: printed as ``error: ...`` with exit status 1, no traceback."""
+
+
 def _add_source(p: argparse.ArgumentParser) -> None:
     p.add_argument("--data", default=os.environ.get("ETHRAG_DATA", str(DEFAULT_DATA)),
                    help="directory of markdown specs (searched recursively)")
@@ -34,9 +38,15 @@ def build_pipeline(a: argparse.Namespace):
 
     llm = None
     if getattr(a, "llm", False):
-        from .llm import AnthropicLLM
+        from .llm import AnthropicLLM, api_key_available
 
-        llm = AnthropicLLM()
+        if not api_key_available():
+            raise CliError("--llm needs ANTHROPIC_API_KEY in the environment (omit --llm to use "
+                           "the offline extractive baseline)")
+        try:
+            llm = AnthropicLLM()
+        except ImportError as e:
+            raise CliError("--llm needs the optional dependency: pip install 'ethrag[llm]'") from e
     kw = {}
     if hasattr(a, "k"):
         kw = {"k": a.k, "expand_graph": a.expand_graph, "min_coverage": a.min_coverage,
@@ -46,7 +56,15 @@ def build_pipeline(a: argparse.Namespace):
 
             kw["reranker"] = LogisticReranker.load(a.rerank)
     if a.index:
+        from .store import is_index_dir
+
+        if not is_index_dir(a.index):
+            raise CliError(f"{a.index} is not an index directory; build one with "
+                           f"`ethrag build-index --data DIR --out {a.index}`")
         return RagPipeline.from_index(a.index, llm, **kw)
+    if not Path(a.data).is_dir():
+        raise CliError(f"data directory {a.data} not found; pass --data DIR (markdown specs), "
+                       "--index DIR (from `ethrag build-index`), or run scripts/fetch_corpus.py")
     return RagPipeline.from_directory(a.data, llm, **kw)
 
 
@@ -66,7 +84,11 @@ def cmd_build_index(a: argparse.Namespace) -> int:
     from .retrieval import HybridIndex
     from .store import save_index
 
+    if not Path(a.data).is_dir():
+        raise CliError(f"data directory {a.data} not found; run scripts/fetch_corpus.py or pass --data")
     chunks = load_corpus(a.data)
+    if not chunks:
+        raise CliError(f"no markdown documents under {a.data}")
     index = HybridIndex(chunks)
     out = save_index(index, a.out)
     print(f"indexed {len(index.graph.docs)} docs / {len(chunks)} chunks -> {out}")
@@ -159,7 +181,11 @@ def main(argv: list[str] | None = None) -> int:
     if argv and argv[0] not in SUBCOMMANDS and not argv[0].startswith("-"):
         argv.insert(0, "ask")
     a = build_parser().parse_args(argv)
-    return a.fn(a)
+    try:
+        return a.fn(a)
+    except CliError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

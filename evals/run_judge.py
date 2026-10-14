@@ -17,10 +17,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ethrag.evalkit import load_questions, split_questions  # noqa: E402
-from ethrag.ingest import load_corpus  # noqa: E402
-from ethrag.judge import LLMJudge, judge_available, run_judged_eval  # noqa: E402
-from ethrag.pipeline import RagPipeline  # noqa: E402
+from ethrag.evalkit import load_questions, split_questions
+from ethrag.ingest import load_corpus
+from ethrag.judge import LLMJudge, judge_available, run_judged_eval
+from ethrag.pipeline import RagPipeline
 
 
 def main() -> int:

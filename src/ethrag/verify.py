@@ -44,11 +44,17 @@ _WORD_STEM = re.compile(r"(ies|ied|ing|ed|es|s)$")
 
 
 def _norm(tok: str) -> str:
+    """Normalise a *numeric* token: drop separators (``1,000`` / ``1_000``), lower-case, canonical hex."""
     t = re.sub(r"[\s,_]", "", tok).lower().rstrip(".")
     t = t.replace("^", "**")
     if t.startswith("0x") and len(t) > 2:
         return "0x" + (t[2:].lstrip("0") or "0")
     return t
+
+
+def _norm_ident(tok: str) -> str:
+    """Normalise an identifier: case-folded but underscores kept (GAS_PER_BLOB != GASPERBLOB)."""
+    return tok.lower()
 
 
 def number_variants(tok: str) -> set[str]:
@@ -91,7 +97,7 @@ def unit_variants(text: str) -> dict[str, set[str]]:
 def claim_tokens(text: str) -> set[str]:
     text = CITATION.sub("", text)
     toks = {_norm(m) for m in _NUM.findall(text)}
-    toks |= {_norm(m) for m in _IDENT.findall(text) if m not in _STOP_CAPS}
+    toks |= {_norm_ident(m) for m in _IDENT.findall(text) if m not in _STOP_CAPS}
     return {t for t in toks if t}
 
 

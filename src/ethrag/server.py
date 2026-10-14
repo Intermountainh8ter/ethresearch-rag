@@ -41,14 +41,23 @@ class RagHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _k(self, params: dict, default: int = 5) -> int:
+    @staticmethod
+    def _int(value, default: int, lo: int = 1, hi: int = 50) -> int:
+        """Clamp an int-like query/JSON value into [lo, hi]; garbage falls back to ``default``."""
+        if isinstance(value, list):
+            value = value[0] if value else default
         try:
-            return max(1, min(50, int(params.get("k", [default])[0] if isinstance(params.get("k"), list)
-                                      else params.get("k", default))))
+            return max(lo, min(hi, int(value)))
         except (TypeError, ValueError):
             return default
 
     def do_GET(self) -> None:
+        try:
+            self._get()
+        except Exception as e:  # noqa: BLE001 - never drop the connection without a JSON body
+            self._send(500, {"error": f"{type(e).__name__}: {e}"})
+
+    def _get(self) -> None:
         url = urlparse(self.path)
         params = parse_qs(url.query)
         p = self.server.pipeline
@@ -58,20 +67,20 @@ class RagHandler(BaseHTTPRequestHandler):
             q = params.get("q", [""])[0].strip()
             if not q:
                 return self._send(400, {"error": "missing q"})
-            self._send(200, p.ask(q).to_dict())
+            self._send(200, p.ask(q, k=self._int(params.get("k"), p.k)).to_dict())
         elif url.path == "/search":
             q = params.get("q", [""])[0].strip()
             if not q:
                 return self._send(400, {"error": "missing q"})
-            hits = p.index.search(q, self._k(params))
+            hits = p.search(q, self._int(params.get("k"), 5))
             self._send(200, {"question": q, "results": [
                 {"id": c.id, "doc": c.doc, "title": c.title, "section": c.section,
                  "score": s, "text": c.body} for c, s in hits]})
         elif url.path == "/related":
-            doc = params.get("doc", [""])[0].strip()
+            doc = params.get("doc", [""])[0].strip().lower()
             if doc not in p.index.graph.docs:
                 return self._send(404, {"error": f"unknown doc {doc!r}"})
-            depth = self._k({"k": params.get("depth", ["1"])}, 1)
+            depth = self._int(params.get("depth"), 1, 1, 3)
             self._send(200, {"doc": doc, "related": [
                 {"doc": d, "distance": dist, "title": p.index.graph.docs[d].title}
                 for d, dist in p.related(doc, depth)]})
@@ -79,6 +88,12 @@ class RagHandler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
     def do_POST(self) -> None:
+        try:
+            self._post()
+        except Exception as e:  # noqa: BLE001
+            self._send(500, {"error": f"{type(e).__name__}: {e}"})
+
+    def _post(self) -> None:
         url = urlparse(self.path)
         if url.path != "/ask":
             return self._send(404, {"error": "not found"})
@@ -96,12 +111,8 @@ class RagHandler(BaseHTTPRequestHandler):
         if not q:
             return self._send(400, {"error": "missing question"})
         p = self.server.pipeline
-        k = self._k(payload, p.k)
-        old_k, p.k = p.k, k
-        try:
-            self._send(200, p.ask(q).to_dict())
-        finally:
-            p.k = old_k
+        # k is passed per call: mutating the shared pipeline would race across handler threads.
+        self._send(200, p.ask(q, k=self._int(payload.get("k"), p.k)).to_dict())
 
 
 def make_server(pipeline: RagPipeline, host: str = "127.0.0.1", port: int = 0,

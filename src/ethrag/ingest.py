@@ -17,7 +17,14 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.*)")
 _FENCE = re.compile(r"^\s*(```|~~~)")
 _TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 _TABLE_SEP = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
-_MDX_LINE = re.compile(r"^\s*(import\s.+from\s.+;?|export\s.+)\s*$")
+# MDX module lines only: `import X from "y";` / `export default ...` / `export const ...`. Prose that
+# merely starts with the word "import"/"export" (hard-wrapped paragraphs) must survive.
+_MDX_LINE = re.compile(
+    r"^\s*(import\s+[\w{}\s,*]+\s+from\s+['\"][^'\"]+['\"];?"
+    r"|import\s+['\"][^'\"]+['\"];?"
+    r"|export\s+(?:default|const|let|var|function|async|\{).*)\s*$")
+# A table-of-contents bullet that only links to an in-page anchor: "  - [Types](#types)".
+_TOC_LINE = re.compile(r"^\s*[-*+]\s+\[[^\]]*\]\(#[^)]*\)\s*$")
 _TAG_LINE = re.compile(r"^\s*</?[A-Za-z][A-Za-z0-9]*(\s[^>]*)?/?>\s*$")
 _HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 _DOC_ID = re.compile(r"^[a-z][a-z0-9-]*$")
@@ -85,7 +92,7 @@ def doc_number(doc_id: str, meta: dict[str, str]) -> int | None:
 
 
 def clean_markdown(body: str) -> str:
-    """Drop MDX import/export lines, bare JSX/HTML tag lines and HTML comments."""
+    """Drop MDX import/export lines, bare JSX/HTML tag lines, in-page TOC bullets and HTML comments."""
     body = _HTML_COMMENT.sub("", body)
     out, in_code = [], False
     for line in body.splitlines():
@@ -93,7 +100,8 @@ def clean_markdown(body: str) -> str:
             in_code = not in_code
             out.append(line)
             continue
-        if not in_code and (_MDX_LINE.match(line) or _TAG_LINE.match(line)):
+        if not in_code and (_MDX_LINE.match(line) or _TAG_LINE.match(line)
+                            or _TOC_LINE.match(line)):
             continue
         out.append(line)
     return "\n".join(out)
@@ -181,12 +189,18 @@ def window_lines(text: str, max_words: int, overlap_lines: int = 2) -> list[str]
     # A single enormous line (e.g. hex bytecode) cannot be split by lines: window it by words.
     inner = [piece for ln in inner for piece in
              (window(ln, max_words, 0) if len(ln.split()) > max_words else [ln])]
+    cap = max(1, max_words // 4)  # overlap lines may never crowd out the new content
     pieces, cur, count = [], [], 0
     for ln in inner:
         w = max(1, len(ln.split()))
         if cur and count + w > max_words:
             pieces.append(cur)
-            cur = cur[-overlap_lines:] if overlap_lines else []
+            keep: list[str] = []
+            for prev in reversed(cur[-overlap_lines:] if overlap_lines else []):
+                if sum(max(1, len(x.split())) for x in keep) + max(1, len(prev.split())) > cap:
+                    break
+                keep.insert(0, prev)
+            cur = keep
             count = sum(max(1, len(x.split())) for x in cur)
         cur.append(ln)
         count += w
@@ -276,8 +290,6 @@ def chunk_document(doc_id: str, raw: str, max_words: int = 180, overlap: int = 3
     }
     chunks: list[Chunk] = []
     for heading, text in split_sections(body):
-        if heading == title and heading != "Preamble":
-            continue  # a top-level "# Title" line that only repeats the title
         for kind, piece in pack_blocks(split_blocks(text), max_words, overlap):
             cid = f"{doc_id}#{len(chunks):03d}"
             # Prefix gives retrievers the doc title and section as context.

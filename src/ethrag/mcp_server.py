@@ -15,7 +15,8 @@ from typing import IO, Any
 from . import __version__
 from .pipeline import RagPipeline
 
-PROTOCOL_VERSION = "2024-11-05"
+SUPPORTED_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
+PROTOCOL_VERSION = SUPPORTED_VERSIONS[0]
 PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INVALID_PARAMS, INTERNAL_ERROR = (
     -32700, -32600, -32601, -32602, -32603)
 
@@ -69,7 +70,10 @@ class McpServer:
     # -- protocol --------------------------------------------------------------------------
     def _initialize(self, params: dict) -> dict:
         return {
-            "protocolVersion": params.get("protocolVersion") or PROTOCOL_VERSION,
+            # Per the MCP lifecycle: echo the client's version when we speak it, else offer ours.
+            "protocolVersion": (params.get("protocolVersion")
+                                if params.get("protocolVersion") in SUPPORTED_VERSIONS
+                                else PROTOCOL_VERSION),
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {"name": self.name, "version": __version__},
         }
@@ -98,16 +102,12 @@ class McpServer:
 
     def _tool_ask_eips(self, args: dict) -> dict:
         p = self.pipeline
-        old_k, p.k = p.k, self._bounded(args.get("k"), p.k)
-        try:
-            a = p.ask(args["question"])
-        finally:
-            p.k = old_k
+        a = p.ask(args["question"], k=self._bounded(args.get("k"), p.k))
         return {"verified": a.verified, "answer": a.text, "retrieved": a.retrieved,
                 "issues": a.issues, "warnings": a.warnings, "provenance": a.provenance}
 
     def _tool_search_eips(self, args: dict) -> dict:
-        hits = self.pipeline.index.search(args["query"], self._bounded(args.get("k"), 5))
+        hits = self.pipeline.search(args["query"], self._bounded(args.get("k"), 5))
         return {"results": [{"id": c.id, "doc": c.doc, "title": c.title, "section": c.section,
                              "score": s, "text": c.body} for c, s in hits]}
 
@@ -127,7 +127,8 @@ class McpServer:
             return _error(msg.get("id") if isinstance(msg, dict) else None, INVALID_REQUEST,
                           "invalid JSON-RPC 2.0 request")
         method, params, rid = msg["method"], msg.get("params") or {}, msg.get("id")
-        if method.startswith("notifications/"):
+        if method.startswith("notifications/") or "id" not in msg:
+            # A message without an id is a notification: it must never be answered.
             if method == "notifications/initialized":
                 self.initialized = True
             return None

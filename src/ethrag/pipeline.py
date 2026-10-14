@@ -73,19 +73,23 @@ class RagPipeline:
     def related(self, doc: str, depth: int = 1) -> list[tuple[str, int]]:
         return self.index.graph.related(doc, depth)
 
-    def retrieve(self, question: str, k: int | None = None) -> list[Chunk]:
+    def search(self, question: str, k: int | None = None) -> list[tuple[Chunk, float]]:
+        """Ranked (chunk, score) pairs using the configured retriever (reranker or graph expansion)."""
         k = self.k if k is None else k
         if self.reranker is not None:
-            return [c for c, _ in self.reranker.rerank(self.index, question, k)]
-        return [c for c, _ in self.index.search(question, k, expand_graph=self.expand_graph)]
+            return self.reranker.rerank(self.index, question, k)
+        return self.index.search(question, k, expand_graph=self.expand_graph)
+
+    def retrieve(self, question: str, k: int | None = None) -> list[Chunk]:
+        return [c for c, _ in self.search(question, k)]
 
     def verify(self, question: str, raw: str, ids: Sequence[str]) -> VerificationResult:
         return verify_answer(raw, self.chunks, ids, question=question,
                              min_coverage=self.min_coverage, min_relevance=self.min_relevance,
                              check_negation=self.check_negation)
 
-    def ask(self, question: str) -> Answer:
-        ctx = self.retrieve(question)
+    def ask(self, question: str, k: int | None = None) -> Answer:
+        ctx = self.retrieve(question, k)
         ids = [c.id for c in ctx]
         raw = self._generate(question, ctx)
         if raw.strip() == "INSUFFICIENT_CONTEXT":

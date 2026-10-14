@@ -19,14 +19,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ethrag.evalkit import (  # noqa: E402
-    format_table, gold_map, load_questions, misses, retrieval_metrics, split_questions,
+from ethrag.evalkit import (
+    format_table,
+    gold_map,
+    load_questions,
+    misses,
+    retrieval_metrics,
+    split_questions,
 )
-from ethrag.ingest import load_corpus  # noqa: E402
-from ethrag.pipeline import RagPipeline, extractive_answer  # noqa: E402
-from ethrag.rerank import LogisticReranker, training_pairs  # noqa: E402
-from ethrag.retrieval import BM25, DenseIndex, HybridIndex  # noqa: E402
-from ethrag.verify import claim_tokens, verify_answer  # noqa: E402
+from ethrag.ingest import load_corpus
+from ethrag.pipeline import RagPipeline, extractive_answer
+from ethrag.rerank import LogisticReranker, training_pairs
+from ethrag.retrieval import BM25, HybridIndex
+from ethrag.verify import claim_tokens, verify_answer
 
 KS = (1, 3, 5, 10)
 COLUMNS = ["R@1", "R@3", "R@5", "R@10", "MRR@10"]
@@ -107,7 +112,7 @@ def main() -> int:
     Path(a.reranker_out).parent.mkdir(parents=True, exist_ok=True)
     reranker.save(a.reranker_out)
     systems["hybrid+reranker(train-fit)"] = lambda q, k: ids(reranker.rerank(index, q, k, pool=50))
-    results["reranker"] = {"train_pairs": int(len(y)), "train_positives": int(y.sum()),
+    results["reranker"] = {"train_pairs": len(y), "train_positives": int(y.sum()),
                            "final_loss": reranker.history[-1] if reranker.history else None,
                            "weights": reranker.feature_weights(), "path": str(a.reranker_out)}
 

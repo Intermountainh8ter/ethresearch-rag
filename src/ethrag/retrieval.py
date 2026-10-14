@@ -335,7 +335,8 @@ class HybridIndex:
         mode = self.eip_mode if eip_mode is None else eip_mode
         fused = (2 * w) * rrf_b + (2 * (1 - w)) * rrf_d  # w=0.5 is plain RRF
         if named_docs and mode != "off":
-            idx = np.concatenate([self.doc_chunks[d] for d in named_docs if d in self.doc_chunks])
+            parts = [self.doc_chunks[d] for d in named_docs if d in self.doc_chunks]
+            idx = np.concatenate(parts) if parts else np.zeros(0, dtype=np.int64)
             if idx.size:
                 if mode == "restrict":
                     mask = np.zeros(len(fused), dtype=bool)
