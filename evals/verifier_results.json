@@ -1276,8 +1276,8 @@
  "gate": {
   "test_tpr": 0.9735099337748344,
   "test_pooled_fpr": 0.05189619963481991,
-  "min_tpr": 0.0,
-  "max_fpr": 1.0,
+  "min_tpr": 0.93,
+  "max_fpr": 0.08,
   "negative_kinds": [
    "wrong",
    "swap",

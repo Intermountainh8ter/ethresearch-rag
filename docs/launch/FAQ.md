@@ -25,7 +25,7 @@ Treat test numbers as optimistic. The doc lists exactly what was and was not con
 ### Was AI used to build this?
 Yes. The code, the hand-written seed questions and these documents were produced with an AI coding
 assistant. What you should rely on is not that, but that everything is checkable: the tests
-(307, offline), the programmatic validators for every evaluation question, and the eval
+(312, offline), the programmatic validators for every evaluation question, and the eval
 scripts that regenerate every number in the README. The one place a model name appears is the
 configurable default of the optional LLM generator.
 

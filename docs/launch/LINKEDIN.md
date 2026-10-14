@@ -10,7 +10,7 @@ text next to the name it is attached to.
 
 What is in the box: 901 EIPs, ERCs, consensus specs and Flashbots docs (17k chunks), hybrid
 BM25 + dense retrieval, a small learned reranker, a citation graph, a CLI, an HTTP API and an MCP
-server. numpy is the only required dependency; the tests (307 of them) run offline.
+server. numpy is the only required dependency; the tests (312 of them) run offline.
 
 What I measured, on 504 synthetic questions with a train/test split I fixed before tuning:
 

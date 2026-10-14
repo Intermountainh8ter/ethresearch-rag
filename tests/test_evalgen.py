@@ -268,3 +268,40 @@ def test_first_summary_sentence_and_cleaning(mini_chunks):
     assert first_summary_sentence(by_doc["eip-2929"]) is None  # no Abstract section
     assert first_summary_sentence([]) is None
     assert clean_sentence("- See [EIP-1559](./eip-1559.md) for `X` and **Y**.") == "See EIP-1559 for X and Y"
+
+
+def test_wrong_value_search_gives_up_when_every_candidate_is_supported(idx):
+    from ethrag.ingest import Chunk
+
+    c = Chunk("eip-9#000", "eip-9", "T", "S", "X_Y = 8 16 4 9 7 2 32 1 80 0 10 18 5 3 6")
+    by_id = {c.id: c}
+    assert supported("X_Y is 16", [c.id], by_id)
+    assert pick_wrong("X_Y is 8", "8", [c.id], by_id) is None
+    a, b = value_spans("X_Y is 8")[0]
+    assert pick_wrong_at("X_Y is 8", (a, b), [c.id], by_id) is None
+    assert make_wrong("X_Y is 8", [c.id], by_id) is None
+
+
+def test_value_spans_trim_trailing_separators_and_skip_words():
+    text = "values 1,000, and 7_ but not uint256 or EIP-1193"
+    assert [text[a:b] for a, b in value_spans(text)] == ["1,000", "7"]
+
+
+def test_multihop_pairs_respects_use_limits_and_skips_clashes():
+    from ethrag.ingest import Chunk
+
+    chunks = [Chunk(f"eip-{n}#000", f"eip-{n}", "T", "S", f"| `NAME_{n}` | {n + 1}0 |\n| `SAME_X` | 7{n} |",
+                    number=n, requires=((n - 1,) if n > 1 else ())) for n in (1, 2, 3, 4)]
+    graph = CitationGraph(chunks)
+    consts = mine_constants(chunks)
+    pairs = multihop_pairs(consts, graph, random.Random(0), limit=10, max_uses=1)
+    docs = [d for a, b, _ in pairs for d in (a.doc, b.doc)]
+    assert len(docs) == len(set(docs)) and all(a.name != b.name for a, b, _ in pairs)
+    single = Chunk("eip-5#000", "eip-5", "T", "S", "| `ONLY_ONE` | 55 |", number=5, requires=(6,))
+    other = Chunk("eip-6#000", "eip-6", "T", "S", "| `ONLY_TWO` | 66 |", number=6)
+    g2 = CitationGraph([single, other])
+    c2 = mine_constants([single, other])
+    assert len(multihop_pairs(c2, g2, random.Random(0), limit=5)) == 1
+    clash = [Chunk("eip-7#000", "eip-7", "T", "S", "| `DUP_NAME` | 70 |", number=7, requires=(8,)),
+             Chunk("eip-8#000", "eip-8", "T", "S", "| `DUP_NAME` | 80 |", number=8)]
+    assert multihop_pairs(mine_constants(clash), CitationGraph(clash), random.Random(0), limit=5) == []

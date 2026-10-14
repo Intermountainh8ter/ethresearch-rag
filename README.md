@@ -8,7 +8,7 @@ cited chunk, next to the name it is claimed for. Anything else is withheld.
 
 * numpy is the only required dependency; the LLM and embedding paths are optional extras.
 * 901 documents / 17,387 chunks, an offline eval set of 504 questions with a stored train/test
-  split, 307 tests at 98.7% coverage, all runnable without network or API key.
+  split, 312 tests at 99.3% coverage, all runnable without network or API key.
 * Python 3.10 - 3.13. MIT.
 
 ```
@@ -200,12 +200,12 @@ rebuilt by `scripts/fetch_corpus.py`. A curated subset, not the full repositorie
 ## Tests and coverage
 
 ```bash
-make lint test cov          # ruff, 307 tests, coverage
+make lint test cov          # ruff, 312 tests, coverage
 make eval-gate              # held-out gates CI enforces
 ```
 
-307 tests pass; coverage of `src/ethrag` is **98.7%** (line and branch combined,
-99.6% line-only). The only excluded code is the optional `SentenceTransformerEmbedder`.
+312 tests pass; coverage of `src/ethrag` is **99.3%** (line and branch combined,
+99.96% line-only). The only excluded code is the optional `SentenceTransformerEmbedder`.
 The network paths (`AnthropicLLM`, the real fetcher) are tested against stand-ins. CI
 (`.github/workflows/ci.yml`) runs ruff, pytest with coverage and both eval gates on Python 3.10-3.13;
 3.10 was not available in the environment where this was written, only 3.11-3.13 were run locally.

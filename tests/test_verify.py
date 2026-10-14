@@ -411,3 +411,12 @@ def test_blind_spot_grounded_is_not_the_same_as_answering():
     assert not r.ok  # caught here only because it shares no topical word with the question
     related = "The block gas limit is burned [eip-9#000]."
     assert check(related, text.replace("30000000", "burned"), question=q, min_coverage=0.7, min_relevance=0.1).ok
+
+
+def test_bare_gwei_spelling_supports_an_eth_claim_and_snippet_falls_back_to_empty():
+    from ethrag.verify import _ChunkView
+
+    c = chunk("MAX_EFFECTIVE_BALANCE | 32000000000 |")
+    r = verify_answer("The deposit is 32 ETH [eip-9#000].", {c.id: c}, [c.id])
+    assert r.ok and r.claims[0].kind == "unit"
+    assert _ChunkView({c.id: c}).snippet(c.id, {"nope"}) == ""

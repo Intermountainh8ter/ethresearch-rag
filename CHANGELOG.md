@@ -71,7 +71,7 @@ only required runtime dependency and the whole suite runs offline.
 - ruff and pytest clean; CI matrix 3.10-3.13 with ruff, pytest + coverage and both held-out eval
   gates; Makefile; Dockerfile; docs (`EVALUATION.md`, `CORPUS.md`, `FLOWCHARTS.md`, `launch/`),
   Mermaid sources and rendered SVGs.
-- Tests: 22 -> 307.
+- Tests: 22 -> 312.
 
 ## 0.1.0
 

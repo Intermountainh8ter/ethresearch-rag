@@ -182,3 +182,9 @@ def test_answers_question_helper(script):
     assert script.answers_question(prose, "The base fee is burned and never paid to miners [a#000].")
     assert not script.answers_question(prose, "Withdrawals are pushed [a#000].")
     assert not script.answers_question({"answer": ""}, "anything")
+
+
+def test_summarize_skips_classes_without_cases():
+    cases = [Case("a", "correct", "?", "x", ()), Case("b", "correct", "?", "y", ())]
+    s = summarize(cases, [True, False])
+    assert set(s) == {"correct"} and s["correct"]["accepted"] == 1 and s["correct"]["rate"] == 0.5
