@@ -8,6 +8,9 @@ Question records (``evals/questions.jsonl``)::
 
 Multi-hop records carry ``"gold": [[doc, needle], [doc, needle]]`` instead of a single pair.
 A gold *chunk* is any chunk of the gold doc whose text contains the needle (case-insensitive).
+Every record of the committed file also stores ``"split": "train" | "test"`` (see
+``ethrag.evalgen.assign_splits``); ``split_questions`` honours it and only falls back to a seeded
+computation for files without the field.
 """
 from __future__ import annotations
 
@@ -45,7 +48,14 @@ def load_questions(path: str | Path) -> list[dict]:
 
 def split_questions(questions: Sequence[dict], seed: int = SPLIT_SEED,
                     test_fraction: float = TEST_FRACTION) -> tuple[list[dict], list[dict]]:
-    """Deterministic, type-stratified split. Same ids -> same split, whatever the file order."""
+    """(train, test). Uses the stored ``split`` field when every record has one.
+
+    Otherwise: a deterministic, type-stratified split (same ids -> same split, whatever the file
+    order).
+    """
+    if questions and all(q.get("split") in ("train", "test") for q in questions):
+        return ([q for q in questions if q["split"] == "train"],
+                [q for q in questions if q["split"] == "test"])
     by_type: dict[str, list[dict]] = {}
     for q in sorted(questions, key=lambda q: q["id"]):
         by_type.setdefault(q["type"], []).append(q)
