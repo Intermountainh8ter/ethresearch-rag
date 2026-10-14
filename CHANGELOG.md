@@ -1,63 +1,79 @@
 # Changelog
 
-## 0.2.0
+## 0.2.0 (unreleased)
 
-Corpus, retrieval, verifier, evals and interfaces all expanded roughly tenfold; numpy remains the
-only required runtime dependency and the whole test/eval suite still runs offline.
+Corpus, retrieval, verifier, evals and interfaces expanded roughly tenfold. numpy is still the
+only required runtime dependency and the whole suite runs offline.
 
 ### Corpus
-- `scripts/fetch_corpus.py`: reproducible, stdlib-only fetcher for ethereum/EIPs, ethereum/ERCs,
-  ethereum/consensus-specs and a curated set of flashbots-docs pages. Writes `data/MANIFEST.json`
-  (id, number, title, status, category, type, created, requires, sha256, bytes).
-- Corpus grows from 23 EIPs / 497 chunks to 901 documents / ~17k chunks (11.3 MB).
-- `data/LICENSE` records the CC0 / MIT provenance.
+- `scripts/fetch_corpus.py`: stdlib-only, reproducible fetcher for ethereum/EIPs, ethereum/ERCs,
+  ethereum/consensus-specs and a curated set of flashbots-docs pages; writes
+  `data/MANIFEST.json` (id, number, title, status, category, type, created, requires, sha256,
+  bytes). Partial runs (`--numbers`, `--no-specs`) merge instead of pruning.
+- 23 EIPs / 497 chunks became 901 documents / 17,387 chunks / 11.3 MB; `data/LICENSE` records the
+  CC0 and MIT provenance; integrity is enforced by `tests/test_corpus.py`.
 
 ### Ingest
-- Chunks carry front-matter metadata (status, category, type, requires, created, number) and a
-  `kind` (prose / code / table).
-- Table-aware chunking: long tables are split by rows with the header repeated on every piece.
-- Code-block-aware chunking: fenced blocks are windowed by lines, never mid-line; a single giant
-  line (bytecode) falls back to word windowing.
-- MDX cleanup for flashbots pages (import/export lines, bare JSX tags, HTML comments).
-- `CitationGraph` built from `requires` front matter and inline `EIP-N` mentions, with
-  `related(doc, depth)`.
+- Chunk metadata (status, category, type, requires, created, number) and a `kind`
+  (prose / code / table); table-aware (header repeated on every row split) and code-aware
+  (fences kept, never split mid-line) chunking; TOC bullets, MDX import/export lines and JSX
+  tags removed; `Spec`/`Docs` status for documents without front matter.
+- Fixed: a code window could carry two giant lines of overlap and reach 540 words (now capped at
+  a quarter of the chunk size); prose beginning with "import"/"export" was deleted as MDX.
 
 ### Retrieval
-- BM25 rewritten as an inverted index with BM25F-style title/section field boosting.
-- Hashed "dense" baseline stored as a numpy CSC matrix (word + char-trigram features, tf-idf,
-  cosine); the `Embedder` protocol and `SentenceTransformerEmbedder` are unchanged.
-- Weighted RRF, EIP-number detection in queries (`boost` / `restrict` / `off`), and optional
-  graph-walk expansion of results along `requires` edges.
-- `LogisticReranker`: 20 interpretable cross features, numpy logistic regression, fit on the train
-  split only; weights shipped in `evals/artifacts/reranker.json` for `ethrag ask --rerank`.
+- Inverted-index BM25 with title/section field boosting and query-side stop-word removal
+  (chosen on train); hashed word + character-trigram dense baseline as a numpy CSC matrix;
+  weighted RRF; EIP/ERC-number detection (`boost` | `restrict` | `off`; boost default 4.0);
+  graph expansion along `requires` edges; `HybridIndex.search` no longer pads with zero-score
+  chunks.
+- `LogisticReranker` (numpy, 20 interpretable features) fit on train with grouped
+  cross-validation for L2; weights in `evals/artifacts/reranker.json` for `--rerank`.
+- `ethrag build-index` / `--index`: `.npz` + JSON persistence.
 
 ### Verifier
-- Hex/decimal, `2**n`/value and unit (`32 ETH` = `32000000000` gwei) equivalences, with the
-  match kind recorded per claim.
-- Negation detection against the best-matching source sentence (answer negated, source not).
-- Per-claim provenance (`VerificationResult.claims`, `provenance()`).
-- Claim-coverage score per sentence and a `min_coverage` threshold for paraphrases.
-- Question-relevance check (`min_relevance`) so an extractive answer to a different question is
-  withheld.
+- Fixed: identifiers were stored with their underscores removed (`GAS_PER_BLOB` became
+  `gasperblob`).
+- New: identifier-value **binding** (a value must sit on the same line as its name, or on a line
+  with no name of its own), **units** (ETH/gwei/wei, data sizes, time, gas, blocks, slots...),
+  **ranges** (`1-16`, `0 to 0x7f`), negation against code lines and table rows, content
+  coverage, topical **question relevance** (reference numbers and "propose/describe" words do not
+  count; a named parameter must be mentioned and given a value), optional novelty, per-claim
+  provenance with the source line, `ethrag ask --explain`, thousands separators (`1,000,000`,
+  `1_000_000`) and `2^17`/`2**17`/`0x00FF` normalisation.
+- Defaults chosen on train: `min_coverage 0.7`, `min_relevance 0.1`.
+- Documented blind spots as tests (`0xEF` vs `0xFE`, two values on one line, grounded is not
+  answering).
 
 ### Evals
-- 239 questions (144 constant, 70 concept, 25 multi-hop) with seeded, type-stratified
-  train/test split; multi-hop doc-set recall; fusion weight sweep on train only; reranker fit
-  on train and reported on test; verifier negation / paraphrase / relevance measurements.
-- LLM-as-judge harness (`ethrag.judge`, `evals/run_judge.py`), skipped without
-  `ANTHROPIC_API_KEY`, tested with a scripted judge.
+- 504-question set mined from the corpus text and validated by program (`ethrag.evalgen`,
+  `evals/build_questions.py`), seeded 70/30 split stored in the file, split by gold document for
+  single-hop questions.
+- `evals/run_evals.py`: BM25 / dense / hybrid / hybrid+rerank / hybrid+graph on train and test,
+  R@1/3/5/10, MRR@10, nDCG@10, multi-hop doc-set recall, ablations, paired bootstrap, tier
+  breakdown, gate `--min-test-recall5`.
+- `evals/run_verifier_eval.py`: TPR/FPR by case class (`wrong`, `swap`, `negated`, `vague`,
+  `echo`, `wrong_citation`, `wrong_q`, `uncited`, `fake_citation`) with Wilson intervals, ablation
+  by check, train-only threshold sweep, extractive end-to-end; gates `--min-test-tpr`,
+  `--max-test-fpr`.
+- LLM-as-judge harness (`ethrag.judge`, `evals/run_judge.py`), skipped without an API key.
+- Fixed: a truncated JSON judge verdict (`{"correct": `) was read as "correct".
 
 ### Interfaces
-- `ethrag build-index` / `ethrag ask --index` (np.savez + JSON persistence).
-- `ethrag serve`: stdlib HTTP JSON API (`/health`, `/ask`, `/search`, `/related`).
-- `ethrag mcp`: MCP-style stdio JSON-RPC server (`ask_eips`, `search_eips`, `related_eips`).
-- `ethrag related`, `ethrag stats`; `ethrag "question"` still works.
+- `ethrag serve` (stdlib HTTP: `/health`, `/ask`, `/search`, `/related`; per-request `k`, no shared
+  mutable state, JSON 500s); `ethrag mcp` (stdio JSON-RPC, protocol negotiation, notifications
+  never answered, per-claim provenance in `ask_eips`); `ethrag related`, `ethrag stats`;
+  friendly `error:` messages with exit code 1; `ethrag "question"` still works.
+- Offline extractive answerer answers `NAME is value` from definition lines (including several
+  constants in one question).
 
 ### Project
-- CI matrix 3.10-3.13 with a held-out eval gate; Makefile; Dockerfile; docs/EVALUATION.md,
-  docs/CORPUS.md, CONTRIBUTING.md.
+- ruff and pytest clean; CI matrix 3.10-3.13 with ruff, pytest + coverage and both held-out eval
+  gates; Makefile; Dockerfile; docs (`EVALUATION.md`, `CORPUS.md`, `FLOWCHARTS.md`, `launch/`),
+  Mermaid sources and rendered SVGs.
+- Tests: 22 -> 307.
 
 ## 0.1.0
 
-Initial release: 23 core EIPs, BM25 + hashed tf-idf + RRF, deterministic citation verifier,
-26 questions, 22 tests.
+Initial release: 23 core EIPs / 497 chunks, BM25 + hashed tf-idf + RRF, deterministic citation
+verifier, 26 questions, 22 tests.

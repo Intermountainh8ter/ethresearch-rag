@@ -143,3 +143,16 @@ def test_default_verifier_thresholds_are_the_ones_chosen_on_train():
 
     a = build_parser().parse_args(["ask", "q"])
     assert (a.min_coverage, a.min_relevance, a.min_novelty) == (0.7, 0.1, 0.0)
+
+
+def test_serve_reports_a_busy_port_without_a_traceback(built_index, capsys):
+    import socket
+
+    busy = socket.socket()
+    busy.bind(("127.0.0.1", 0))
+    busy.listen(1)
+    try:
+        rc, _, err = run(capsys, "serve", "--index", str(built_index), "--port", str(busy.getsockname()[1]))
+    finally:
+        busy.close()
+    assert rc == 1 and err.startswith("error: cannot bind 127.0.0.1:") and "--port" in err

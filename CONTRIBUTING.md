@@ -1,54 +1,72 @@
 # Contributing
 
-Thanks for looking. This is a small, dependency-light project; the bar is "tests and evals
-stay honest", not ceremony.
+Small, dependency-light project; the bar is "tests and evals stay honest".
 
 ## Setup
 
-```
+```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
-make lint test          # ruff + pytest (offline, no API key)
-make eval               # retrieval + verifier evals, prints train/test tables
+make lint test           # ruff + pytest, offline, no API key, about 25 s
+make cov                 # pytest with line + branch coverage
+make eval-gate           # the held-out gates CI enforces (about 1.5 min)
+make eval                # full retrieval tables with misses
+make verifier-eval       # verifier TPR / FPR by case class
 ```
 
-Python 3.10 through 3.13 are supported; keep syntax compatible with 3.10 (no `match` on
-anything but trivially rewritable code, no PEP 695 generics).
+Python 3.10 through 3.13 are supported. `ruff` runs with `target-version = "py310"`, which flags
+syntax newer than 3.10 (no `match` shortcuts, no PEP 695 generics, no PEP 701 f-strings).
 
 ## Ground rules
 
-- **numpy stays the only required runtime dependency.** Anything else goes behind an optional
+* **numpy stays the only required runtime dependency.** Anything else goes behind an optional
   extra (`llm`, `embed`) and an import inside the function that needs it, so `import ethrag`
   never fails on a bare interpreter.
-- **Tests run offline.** No network, no API keys, no model downloads. Anything that needs an LLM
-  must have a scripted stand-in (`ScriptedLLM`, `ScriptedJudge`) and be skipped without a key.
-- **Never tune on the test split.** `evals/run_evals.py` fits fusion weights and the reranker on
-  the train split and reports both. If you add a knob, sweep it on train only.
-- **Do not fabricate numbers.** README tables are pasted from a real `make eval` run; update
-  them together with the code that changed them, and mention the run in CHANGELOG.md.
-- **Corpus changes go through `scripts/fetch_corpus.py`.** Edit the curated number list or page
-  list, re-run it, and commit the regenerated `data/MANIFEST.json`. Keep `data/` under 40 MB.
-- **Eval questions must be grounded.** `tests/test_corpus.py` checks that every question's
-  `must_contain` is in a chunk of its gold doc, that the reference answer's claim tokens are
-  supported, and that the `wrong` answer's tokens are *not* all present (otherwise the verifier
-  could not tell them apart and the question measures nothing).
+* **Tests run offline.** No network, no API keys, no model downloads. Anything that talks to a
+  service needs a stand-in (`ScriptedLLM`, `ScriptedJudge`, a monkeypatched `fetch`) and is
+  skipped or stubbed without a key. HTTP and MCP tests bind to port 0 or use pipes.
+* **Never tune on the test split.** `evals/run_evals.py` and `evals/run_verifier_eval.py`
+  choose every numeric knob on train. If you add a knob, add it to a train-only sweep and report
+  both splits. Say so in the PR if you looked at test failures while designing a rule; the docs
+  list this caveat for the existing rules.
+* **Do not fabricate numbers.** Tables in README.md and docs/ are pasted from real runs.
+  Change code that moves a number, re-run, update the tables and CHANGELOG.md together.
+* **A verifier change needs a test on both sides:** a case it must now reject and a correct
+  answer it must still accept. Known weaknesses live as `test_blind_spot_*` tests in
+  `tests/test_verify.py`; if one starts failing the verifier got stronger, so update
+  docs/EVALUATION.md section 6 rather than deleting the test.
+* **Corpus changes go through `scripts/fetch_corpus.py`.** Edit the curated list, re-run it,
+  commit the regenerated `data/MANIFEST.json`, then `python evals/build_questions.py`. Keep
+  `data/` under 40 MB (`tests/test_corpus.py` enforces it along with hashes and duplicates).
 
-## Adding a question
+## Evaluation questions
 
-Append a line to `evals/questions.jsonl`:
+`evals/questions.jsonl` is generated. Do not edit it by hand.
 
-```json
-{"id": "c-145", "type": "constant", "q": "...", "gold_doc": "eip-1559",
- "must_contain": "ELASTICITY_MULTIPLIER = 2", "answer": "ELASTICITY_MULTIPLIER is 2",
- "wrong": "ELASTICITY_MULTIPLIER is 4"}
-```
-
-Multi-hop questions use `"gold": [[doc, needle], [doc, needle]]`. Ids are stable; the
-train/test split is a seeded, type-stratified function of the id, so a new question lands in
-one split deterministically and existing assignments do not move.
+* Hand-written questions go in `evals/seed_questions.jsonl`:
+  ```json
+  {"id": "c-200", "type": "constant", "q": "What does EIP-1559 set ELASTICITY_MULTIPLIER to?",
+   "gold_doc": "eip-1559", "must_contain": "ELASTICITY_MULTIPLIER = 2",
+   "answer": "ELASTICITY_MULTIPLIER is 2", "wrong": "ELASTICITY_MULTIPLIER is 4"}
+  ```
+  Multi-hop questions use `"gold": [[doc, needle], [doc, needle]]`.
+* Run `python evals/build_questions.py`. It validates every record with the production verifier
+  (needle in a gold chunk, correct answer supported, wrong answer **not** supported), repairs or
+  drops failures, assigns the seeded train/test split and rewrites the file. The report lists
+  what was dropped and why.
+* `python evals/build_questions.py --check` (also a test and a CI step) fails when the committed
+  file differs from a fresh build.
+* Splits are recomputed over the whole set, so adding questions can move documents between
+  train and test. Re-run both eval scripts and commit `evals/results.json`,
+  `evals/verifier_results.json` and `evals/artifacts/reranker.json`.
 
 ## Pull requests
 
-- `ruff check .` and `pytest -q` must pass on 3.10 and 3.13.
-- If retrieval numbers move, paste the new `make eval` tables into the README and say why.
-- Keep commits focused; one behavioural change per commit is ideal.
+* `ruff check .` and `pytest -q` pass; coverage of `src/ethrag` does not drop.
+* If a retrieval or verifier number moves, paste the new table and explain why.
+* One behavioural change per commit where possible; keep commit messages factual.
+
+## Releasing
+
+Bump `version` in `pyproject.toml` and `__version__` in `src/ethrag/__init__.py`, move the
+CHANGELOG entry, tag. There is no PyPI package yet.

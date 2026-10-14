@@ -106,7 +106,12 @@ def cmd_build_index(a: argparse.Namespace) -> int:
 def cmd_serve(a: argparse.Namespace) -> int:
     from .server import serve
 
-    serve(build_pipeline(a), a.host, a.port)
+    pipeline = build_pipeline(a)
+    try:
+        serve(pipeline, a.host, a.port)
+    except OSError as e:
+        raise CliError(f"cannot bind {a.host}:{a.port}: {e.strerror or e}; pick another --port "
+                       "(--port 0 chooses a free one)") from e
     return 0
 
 

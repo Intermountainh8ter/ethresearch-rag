@@ -7,7 +7,7 @@ flowchart LR
     S --> D["error: data directory ... not found"]
     S --> F["scripts/fetch_corpus.py<br/>kept 0 docs, or HTTP 404/other"]
     S --> K["error: --llm needs ANTHROPIC_API_KEY<br/>or ethrag[llm]"]
-    S --> P["OSError: Address already in use<br/>when running ethrag serve"]
+    S --> P["error: cannot bind HOST:PORT<br/>Address already in use<br/>when running ethrag serve"]
     S --> M["MCP client: failed to connect,<br/>timeout, or -32700 parse error"]
 
     W --> W1{"ethrag ask --explain<br/>which issue line?"}
