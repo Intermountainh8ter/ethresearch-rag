@@ -17,6 +17,7 @@ import argparse
 import json
 import sys
 import time
+import pathlib
 from pathlib import Path
 
 import numpy as np
@@ -180,7 +181,12 @@ def main(argv: list[str] | None = None) -> int:
     results["reranker"] = {"train_candidates": len(y), "train_positives": int(y.sum()), "l2": best_l2,
                            "cv_recall5": {str(k): v for k, v in cv_scores.items()},
                            "final_loss": reranker.history[-1] if reranker.history else None,
-                           "weights": reranker.feature_weights(), "path": str(a.reranker_out)}
+                           "weights": reranker.feature_weights(),
+                           # Repo-relative so the result file reproduces identically on
+                           # any machine; prior absolute path broke diffing across hosts.
+                           "path": str(pathlib.Path(a.reranker_out).resolve().relative_to(ROOT))
+                               if pathlib.Path(a.reranker_out).resolve().is_relative_to(ROOT)
+                               else str(a.reranker_out)}
 
     # ---- 3. systems -----------------------------------------------------------------------------
     headline = {
