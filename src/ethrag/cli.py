@@ -75,7 +75,10 @@ def build_pipeline(a: argparse.Namespace):
 
 def cmd_ask(a: argparse.Namespace) -> int:
     ans = build_pipeline(a).ask(a.question)
-    if a.json:
+    if a.explain:
+        print(ans.text if ans.verified else f"(withheld) {ans.text}")
+        print(ans.verification.explain() if ans.verification else "; ".join(ans.issues))
+    elif a.json:
         print(json.dumps(ans.to_dict(), indent=2))
     else:
         print(json.dumps({"verified": ans.verified, "answer": ans.text, "retrieved": ans.retrieved,
@@ -147,6 +150,8 @@ def build_parser() -> argparse.ArgumentParser:
     ask = sub.add_parser("ask", help="answer a question (exit code 2 if unverified)")
     ask.add_argument("question")
     ask.add_argument("--json", action="store_true", help="full JSON including per-claim provenance")
+    ask.add_argument("--explain", action="store_true",
+                     help="print the per-claim verification table (token, supporting chunk, source line)")
     _add_source(ask)
     _add_pipeline_opts(ask)
     ask.set_defaults(fn=cmd_ask)

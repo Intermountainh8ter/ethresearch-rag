@@ -103,8 +103,9 @@ class McpServer:
     def _tool_ask_eips(self, args: dict) -> dict:
         p = self.pipeline
         a = p.ask(args["question"], k=self._bounded(args.get("k"), p.k))
+        claims = [c.__dict__ for c in a.verification.claims] if a.verification else []
         return {"verified": a.verified, "answer": a.text, "retrieved": a.retrieved,
-                "issues": a.issues, "warnings": a.warnings, "provenance": a.provenance}
+                "issues": a.issues, "warnings": a.warnings, "provenance": a.provenance, "claims": claims}
 
     def _tool_search_eips(self, args: dict) -> dict:
         hits = self.pipeline.search(args["query"], self._bounded(args.get("k"), 5))

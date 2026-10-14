@@ -115,3 +115,31 @@ def test_mcp_command_reads_stdin(built_index, monkeypatch, capsys):
 
 def test_cli_error_type_is_exported():
     assert issubclass(CliError, Exception) and cli.SUBCOMMANDS[0] == "ask"
+
+
+def test_ask_explain_prints_the_per_claim_table(built_index, capsys):
+    rc, out, _ = run(capsys, "ask", "--index", str(built_index), "--explain",
+                     "What is the ELASTICITY_MULTIPLIER in EIP-1559?")
+    assert rc == 0
+    assert "ELASTICITY_MULTIPLIER is 2" in out and "verdict: VERIFIED" in out and "[ok  ]" in out
+    assert "elasticity_multiplier" in out and "(exact)" in out
+    rc, out, _ = run(capsys, "ask", "--index", str(built_index), "--explain",
+                     "What is the airspeed velocity of an unladen swallow?")
+    assert rc == 2 and out.startswith("(withheld) ") and "model reported insufficient context" in out
+
+
+def test_ask_explain_for_a_withheld_draft(mini_chunks, mini_index, repeat_llm, cid, monkeypatch, capsys):
+    from ethrag import RagPipeline
+
+    wrong = f"ELASTICITY_MULTIPLIER is 3 [{cid('eip-1559', 'ELASTICITY_MULTIPLIER')}]."
+    monkeypatch.setattr(cli, "build_pipeline", lambda a: RagPipeline(mini_chunks, repeat_llm(wrong), index=mini_index))
+    rc, out, _ = run(capsys, "ask", "--explain", "What is ELASTICITY_MULTIPLIER in EIP-1559?")
+    assert rc == 2 and out.startswith("(withheld) ") and "verdict: WITHHELD" in out
+    assert "[FAIL] s0 3" in out and "issue: unsupported claim '3'" in out
+
+
+def test_default_verifier_thresholds_are_the_ones_chosen_on_train():
+    from ethrag.cli import build_parser
+
+    a = build_parser().parse_args(["ask", "q"])
+    assert (a.min_coverage, a.min_relevance, a.min_novelty) == (0.7, 0.1, 0.0)

@@ -156,3 +156,10 @@ def test_real_subprocess_handshake_over_stdio(mini_dir):
             proc.kill()
         proc.stdout.close()
         proc.stderr.close()
+
+
+def test_ask_tool_returns_per_claim_provenance(server):
+    p = payload(call(server, "ask_eips", {"question": "What is ELASTICITY_MULTIPLIER in EIP-1559?"}))
+    claims = {c["token"]: c for c in p["claims"]}
+    assert claims["2"]["supported"] and claims["2"]["chunk"].startswith("eip-1559#") and claims["2"]["snippet"]
+    assert "elasticity_multiplier" in claims and claims["2"]["bound"] is True
