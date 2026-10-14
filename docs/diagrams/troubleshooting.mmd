@@ -1,0 +1,58 @@
+%% Decision tree keyed to the real messages ethrag prints. Re-render: scripts/render_diagrams.sh
+flowchart LR
+    S{"What did you see?"}
+    S --> W["Answer withheld<br/>I can't give a verified answer ...<br/>exit code 2"]
+    S --> R["Verified, but the answer is<br/>about the wrong thing, or<br/>the right chunk is missing"]
+    S --> I["error: ... is not an index directory"]
+    S --> D["error: data directory ... not found"]
+    S --> F["scripts/fetch_corpus.py<br/>kept 0 docs, or HTTP 404/other"]
+    S --> K["error: --llm needs ANTHROPIC_API_KEY<br/>or ethrag[llm]"]
+    S --> P["OSError: Address already in use<br/>when running ethrag serve"]
+    S --> M["MCP client: failed to connect,<br/>timeout, or -32700 parse error"]
+
+    W --> W1{"ethrag ask --explain<br/>which issue line?"}
+    W1 --> W2["uncited sentence"]
+    W1 --> W3["citation X was not retrieved"]
+    W1 --> W4["unsupported claim T<br/>not found in cited chunks"]
+    W1 --> W5["unbound claim T: found in the cited<br/>chunks but never next to NAME"]
+    W1 --> W6["unit mismatch / range mismatch /<br/>malformed range"]
+    W1 --> W7["negation in answer sentence N has no<br/>negated source / negation dropped"]
+    W1 --> W8["sentence N coverage x below 0.70"]
+    W1 --> W9["answer relevance / does not mention /<br/>states no value / question names EIP-N"]
+    W1 --> W10["model reported<br/>insufficient context"]
+
+    W2 --> W2a["Fix: the LLM ignored the citation format.<br/>Retry, or drop --llm to use the extractive answerer.<br/>Extractive answers are always cited."]
+    W3 --> W3a["Fix: the draft cites a chunk outside the top-k.<br/>ethrag ask -k 10 ...<br/>or --rerank evals/artifacts/reranker.json"]
+    W4 --> W4a["Fix: the number or name is not in the cited text.<br/>--explain shows the FAIL row. Re-ask naming the<br/>EIP and constant, raise -k, check the doc exists:<br/>ethrag related eip-N says unknown doc if not"]
+    W5 --> W5a["Fix: the value exists but belongs to another name,<br/>so the draft is probably wrong. Re-ask with the exact<br/>UPPER_SNAKE name; read the source line in --explain."]
+    W6 --> W6a["Fix: the unit or range contradicts the source.<br/>Quote the unit the spec uses (ETH vs gwei).<br/>There is deliberately no flag to switch this off."]
+    W7 --> W7a["Fix: a reversed claim. Re-ask, or inspect the source<br/>sentence printed in the issue. Only for debugging:<br/>--no-negation-check"]
+    W8 --> W8a["Fix: a paraphrase uses words the cited chunk lacks.<br/>For LLM text try --min-coverage 0.5, or ask the<br/>model to quote the spec."]
+    W9 --> W9a["Fix: the answer is off-topic. Name the parameter or<br/>EIP in the question; for debugging lower<br/>--min-relevance, never to 0 in production."]
+    W10 --> W10a["Fix: retrieval missed or the corpus lacks it.<br/>See the recall branch below; ethrag stats<br/>prints doc and chunk counts."]
+
+    R --> R1{"Is the document<br/>in the corpus?"}
+    R1 -- "no: ls data/eips/eip-N.md fails,<br/>N not in data/MANIFEST.json" --> R1a["Fix: add it with scripts/fetch_corpus.py<br/>--numbers N, then ethrag build-index"]
+    R1 -- yes --> R2{"Does the question name<br/>EIP-N or the identifier?"}
+    R2 -- no --> R2a["Fix: add EIP-N or the exact NAME.<br/>Named EIPs get a rank boost"]
+    R2 -- yes --> R3["Fix: raise -k, add --rerank<br/>evals/artifacts/reranker.json (TEST R@5 0.934<br/>vs 0.815), or --expand-graph for related EIPs"]
+
+    I --> I1["Fix: ethrag build-index --data data --out .index<br/>then ethrag ask --index .index ...<br/>or set ETHRAG_INDEX"]
+    D --> D1["Fix: pass --data DIR (markdown specs) or --index DIR.<br/>A pip install without the repo has no data/ folder:<br/>python scripts/fetch_corpus.py --out data"]
+    F --> F1{"Counts in the last line?"}
+    F1 -- "404 is large, ok is large" --> F2["Normal: most numbers in the curated list<br/>do not exist. Nothing to fix."]
+    F1 -- "ok = 0 or other > 0" --> F3["Fix: network. Only raw.githubusercontent.com<br/>is needed. Set HTTPS_PROXY, test with<br/>--dry-run, retry with --workers 2"]
+    K --> K1{"Which message?"}
+    K1 -- "needs ANTHROPIC_API_KEY" --> K2["Fix: export ANTHROPIC_API_KEY=...<br/>or omit --llm"]
+    K1 -- "ethrag[llm]" --> K3["Fix: pip install 'ethrag[llm]'"]
+    P --> P1["Fix: ethrag serve --port 8081<br/>or --port 0 for a random free port<br/>(the chosen port is printed)"]
+    M --> M1{"Which symptom?"}
+    M1 -- "timeout at start" --> M2["Fix: building the index takes seconds.<br/>Run ethrag build-index once and start<br/>ethrag mcp --index .index"]
+    M1 -- "-32700 parse error" --> M3["Fix: the transport is newline-delimited JSON<br/>on stdin/stdout, not Content-Length framing.<br/>Send one JSON object per line"]
+    M1 -- "tool not found / -32602" --> M4["Fix: tools are ask_eips, search_eips,<br/>related_eips. Arguments: question, query, doc"]
+    M1 -- "garbage on stdout" --> M5["Fix: nothing else may print to stdout;<br/>logs go to stderr. Launch the server with<br/>the command shown in the README"]
+
+    classDef leaf fill:#e8f0fe,stroke:#1a73e8,color:#0b2a5b
+    classDef sym fill:#fef7e0,stroke:#f9ab00,color:#4a3600
+    class W2a,W3a,W4a,W5a,W6a,W7a,W8a,W9a,W10a,R1a,R2a,R3,I1,D1,F2,F3,K2,K3,P1,M2,M3,M4,M5 leaf
+    class W,R,I,D,F,K,P,M sym

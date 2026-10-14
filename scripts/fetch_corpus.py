@@ -373,15 +373,18 @@ def main(argv: list[str] | None = None) -> int:
         else:
             counts["superseded"] += 1
 
-    # Remove previously fetched files that are no longer part of the corpus, then write.
+    # A full run owns the whole tree: files that are no longer part of the corpus are removed.
+    # A partial run (--numbers / --no-specs) only adds or replaces the files it fetched and merges
+    # them into the existing manifest, so `--numbers 9999` can never delete the other documents.
+    partial = bool(a.numbers.strip()) or a.no_specs
     for sub in ("eips", "consensus-specs", "flashbots"):
-        d = out / sub
-        d.mkdir(parents=True, exist_ok=True)
-    live_paths = {job[1] for job, _ in kept.values()}
-    for sub in ("eips", "consensus-specs", "flashbots"):
-        for old in (out / sub).glob("*.md"):
-            if f"{sub}/{old.name}" not in live_paths:
-                old.unlink()
+        (out / sub).mkdir(parents=True, exist_ok=True)
+    if not partial:
+        live_paths = {job[1] for job, _ in kept.values()}
+        for sub in ("eips", "consensus-specs", "flashbots"):
+            for old in (out / sub).glob("*.md"):
+                if f"{sub}/{old.name}" not in live_paths:
+                    old.unlink()
     entries: list[Entry] = []
     total = 0
     for job, body in kept.values():
@@ -389,6 +392,11 @@ def main(argv: list[str] | None = None) -> int:
         (out / rel).write_bytes(body)
         total += len(body)
         entries.append(build_entry(doc_id, rel, source, url, number, body))
+    if partial and (out / "MANIFEST.json").is_file():
+        have = {e["id"]: e for e in json.loads((out / "MANIFEST.json").read_text(encoding="utf-8"))["entries"]}
+        have.update({e.id: asdict(e) for e in entries})
+        entries = [Entry(**v) for v in have.values()]
+        total = sum(e.bytes for e in entries)
     entries.sort(key=lambda e: (e.source, e.number if e.number is not None else -1, e.id))
 
     manifest = {

@@ -217,6 +217,15 @@ def main(argv: list[str] | None = None) -> int:
                 for miss in misses(headline["hybrid"], split, gold, 5):
                     print(f"   miss [hybrid] {miss['id']}: {miss['q']}  top={miss['top']}")
 
+    # The "purpose" tier always points at an Abstract chunk, so a reranker that learns a section
+    # prior is rewarded for it. Report the test split without that tier as a sensitivity check.
+    no_purpose = {q["id"] for q in test if q.get("tier") != "purpose"}
+    banner(f"sensitivity: TEST split without the synthetic 'purpose' tier (n={len(no_purpose)})")
+    table_np = [{"system": n, **aggregate([r for r in rows_by["test"][n] if r["id"] in no_purpose], KS)}
+                for n in headline]
+    print(format_table(table_np, COLUMNS))
+    results["retrieval"]["test_without_purpose"] = table_np
+
     banner("ablations (same tuned w*/boost*; shows where hybrid gains or loses against plain BM25)")
     for s in splits:
         print(f"[{s}]")

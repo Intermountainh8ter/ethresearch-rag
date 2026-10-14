@@ -79,6 +79,21 @@ def parse_front_matter(raw: str) -> tuple[dict[str, str], str]:
     return meta, raw[m.end():]
 
 
+# Documents without EIP front matter get the same labels scripts/fetch_corpus.py records in
+# data/MANIFEST.json, so retrieval priors (status "Spec"/"Docs" count as settled text) see them.
+_DEFAULT_META = {
+    "cl-": {"status": "Spec", "category": "Consensus", "type": "Specification"},
+    "fb-": {"status": "Docs", "category": "MEV", "type": "Documentation"},
+}
+
+
+def default_meta(doc_id: str) -> dict[str, str]:
+    for prefix, meta in _DEFAULT_META.items():
+        if doc_id.startswith(prefix):
+            return meta
+    return {}
+
+
 def parse_requires(value: str | None) -> tuple[int, ...]:
     return tuple(sorted({int(x) for x in re.findall(r"\d+", value or "")}))
 
@@ -283,9 +298,11 @@ def chunk_document(doc_id: str, raw: str, max_words: int = 180, overlap: int = 3
     body = clean_markdown(body)
     title = meta.get("title") or first_heading(body) or doc_id
     number = doc_number(doc_id, meta)
+    fallback = default_meta(doc_id)
     common = {
-        "status": meta.get("status", ""), "category": meta.get("category", ""),
-        "type": meta.get("type", ""), "requires": parse_requires(meta.get("requires")),
+        "status": meta.get("status") or fallback.get("status", ""),
+        "category": meta.get("category") or fallback.get("category", ""),
+        "type": meta.get("type") or fallback.get("type", ""), "requires": parse_requires(meta.get("requires")),
         "created": meta.get("created", ""), "number": number,
     }
     chunks: list[Chunk] = []

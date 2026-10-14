@@ -1,0 +1,40 @@
+%% How a question becomes a verified answer (or a withheld one). Re-render: scripts/render_diagrams.sh
+flowchart TD
+    subgraph IDX ["1 Build the index once"]
+        direction TB
+        A["data/ : 901 markdown specs<br/>scripts/fetch_corpus.py rebuilds it"] --> B["ethrag build-index<br/>--data data --out .index<br/>chunks, BM25, hashed dense,<br/>citation graph"]
+    end
+    subgraph RET ["2 Retrieve"]
+        direction TB
+        D["BM25 + hashed dense<br/>weighted RRF, w = 0.5<br/>EIP-N in the question is boosted"] --> E{"--rerank<br/>weights.json?"}
+        E -- yes --> F["logistic reranker<br/>rescoring top 50"]
+        E -- no --> G["top-k chunks (k = 5)"]
+        F --> G
+    end
+    subgraph GEN ["3 Generate"]
+        direction TB
+        H{"--llm and<br/>ANTHROPIC_API_KEY?"}
+        H -- no --> I["offline extractive answer:<br/>NAME is value from a definition<br/>line, else best sentence, cited"]
+        H -- yes --> J["LLM drafts an answer,<br/>every sentence ends in [doc#NNN]"]
+    end
+    subgraph VER ["4 Verify (deterministic, no model)"]
+        direction TB
+        K1["every sentence cited, every<br/>citation was retrieved"] --> K2["every number, hex, 2**n, ALL_CAPS<br/>token is in the cited chunk"]
+        K2 --> K3["value is next to its name (binding)<br/>units and ranges agree"]
+        K3 --> K4["negation not invented or dropped"]
+        K4 --> K5["content coverage >= 0.7"]
+        K5 --> K6["about the question: relevance >= 0.1<br/>names the parameter, gives a value"]
+    end
+    B --> C["ethrag ask / serve / mcp<br/>--index .index"]
+    C --> D
+    G --> H
+    I --> K1
+    J --> K1
+    K6 --> L{"all checks<br/>pass?"}
+    L -- yes --> M["VERIFIED answer<br/>text + per-claim provenance<br/>exit code 0"]
+    L -- no --> N["WITHHELD, issues listed,<br/>draft not shown, exit code 2"]
+    N --> O["ethrag ask --explain<br/>then docs/FLOWCHARTS.md"]
+    classDef ok fill:#e6f4ea,stroke:#1e8e3e,color:#0d3b1a
+    classDef bad fill:#fce8e6,stroke:#d93025,color:#4a0e0a
+    class M ok
+    class N,O bad

@@ -208,3 +208,21 @@ def test_chunk_is_immutable_and_body_without_context_line():
 
 def test_real_corpus_has_all_three_chunk_kinds(corpus):
     assert {c.kind for c in corpus} == {"prose", "code", "table"}
+
+
+def test_spec_and_docs_without_front_matter_get_manifest_style_labels():
+    cl = chunk_document("cl-phase0-beacon-chain", "# Phase 0\n\nSpec body text here.")[0]
+    fb = chunk_document("fb-auction-overview", "---\ntitle: Overview\n---\nDocs body text here.")[0]
+    assert (cl.status, cl.category, cl.type) == ("Spec", "Consensus", "Specification")
+    assert (fb.status, fb.category, fb.type) == ("Docs", "MEV", "Documentation")
+    eip = chunk_document("eip-9", "---\ntitle: T\nstatus: Draft\n---\nBody text here.")[0]
+    assert eip.status == "Draft" and eip.category == "" and chunk_document("eip-8", "plain body text")[0].status == ""
+    explicit = chunk_document("cl-x", "---\ntitle: T\nstatus: Final\n---\nBody text here.")[0]
+    assert explicit.status == "Final"  # front matter always wins
+
+
+def test_stats_style_status_counts_have_no_unknown_for_spec_docs(corpus):
+    from ethrag.ingest import doc_metadata
+
+    meta = doc_metadata(corpus)
+    assert all(m.status for d, m in meta.items() if d.startswith(("cl-", "fb-")))
