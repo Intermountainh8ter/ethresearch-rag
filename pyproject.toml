@@ -4,16 +4,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ethrag"
-version = "0.1.0"
-description = "Citation-verified RAG over Ethereum EIPs with retrieval and grounding evals."
+version = "0.2.0"
+description = "Citation-verified RAG over Ethereum EIPs, ERCs and consensus specs with offline retrieval and grounding evals."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
+authors = [{ name = "Ammon Jackson" }]
 dependencies = ["numpy>=1.24"]
+keywords = ["ethereum", "eip", "rag", "retrieval", "verification", "bm25"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Text Processing :: Indexing",
+]
 
 [project.optional-dependencies]
 llm = ["anthropic>=0.40"]
-dev = ["pytest>=8", "ruff>=0.5"]
+embed = ["sentence-transformers>=2.2"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.5"]
 
 [project.scripts]
 ethrag = "ethrag.cli:main"
@@ -23,6 +35,17 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["ethrag"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["data"]

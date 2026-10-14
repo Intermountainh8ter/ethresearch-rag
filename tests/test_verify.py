@@ -9,7 +9,8 @@ RET = list(CH)
 
 def test_claim_tokens_numbers_idents_hex_pow():
     t = claim_tokens("GAS_PER_BLOB is 2 ** 17, type 0x03, and 4,096 elements. [eip-4844#001]")
-    assert {"gas_per_blob", "2**17", "0x03", "4096"} <= t
+    # hex is normalised (0x03 == 0x3) so spellings with/without leading zeros compare equal
+    assert {"gas_per_blob", "2**17", "0x3", "4096"} <= t
     assert not any("eip" in x for x in t)
 
 

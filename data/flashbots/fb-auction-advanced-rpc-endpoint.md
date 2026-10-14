@@ -1,0 +1,827 @@
+---
+title: JSON-RPC Endpoints
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import Hints from '../../specs/mev-share/HintsTable';
+import Builders from '../../specs/mev-share/_builders.mdx';
+import SendBundleSpec from '../../specs/mev-share/_mev_sendBundle.mdx';
+import SimBundleSpec from '../../specs/mev-share/_mev_simBundle.mdx';
+
+## Interact directly with the Flashbots RPC endpoint
+
+Advanced users can interact with the RPC endpoint at `relay.flashbots.net`, or one of the testnet URLs below.
+
+### Bundle Relay URLS
+
+| Network  | URL                                      |
+| -------- | ---------------------------------------- |
+| Mainnet  | `https://relay.flashbots.net`            |
+| Sepolia  | `https://relay-sepolia.flashbots.net`    |
+
+The API provides JSON-RPC methods for interfacing with Flashbots. Below are some of the restrictions:
+
+- There is a rate limit of 10,000 requests per second per IP
+- Each bundle (`txs` parameter) can contain at most 100 transactions and have a size limit of 300,000 bytes
+
+Each method is documented below.
+
+### eth_sendBundle
+
+`eth_sendBundle` can be used to send your bundles to the Flashbots builder. The `eth_sendBundle` RPC has the following payload format:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_sendBundle",
+  "params": [
+    {
+      txs,               // Array[String], A list of signed transactions to execute in an atomic bundle
+      blockNumber,       // String, a hex encoded block number for which this bundle is valid on
+      minTimestamp,      // (Optional) Number, the minimum timestamp for which this bundle is valid, in seconds since the unix epoch
+      maxTimestamp,      // (Optional) Number, the maximum timestamp for which this bundle is valid, in seconds since the unix epoch
+      revertingTxHashes, // (Optional) Array[String], A list of tx hashes that are allowed to revert
+      replacementUuid,   // (Optional) String, UUID that can be used to cancel/replace this bundle
+      builders,          // (Optional) Array[String], A list of [registered](https://github.com/flashbots/dowg/blob/main/builder-registrations.json) block builder names to share the bundle with
+    }
+  ]
+}
+```
+
+example:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_sendBundle",
+  "params": [
+    {
+      "txs": ["0x123abc...", "0x456def..."],
+      "blockNumber": "0xb63dcd",
+      "minTimestamp": 0,
+      "maxTimestamp": 1615920932
+    }
+  ]
+}
+```
+
+example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "123",
+  "result": {
+    "bundleHash": "0x2228f5d8954ce31dc1601a8ba264dbd401bf1428388ce88238932815c5d6f23f"
+  }
+}
+```
+
+If `builders` are specified, the response will include an additional `smart` field.
+
+example with `builders`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_sendBundle",
+  "params": [
+    {
+      "txs": ["0x123abc...", "0x456def..."],
+      "blockNumber": "0xb63dcd",
+      "minTimestamp": 0,
+      "maxTimestamp": 1615920932,
+      "builders": ["builder0x69"]
+    }
+  ]
+}
+```
+
+example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "123",
+  "result": {
+    "bundleHash": "0x2228f5d8954ce31dc1601a8ba264dbd401bf1428388ce88238932815c5d6f23f",
+    "smart": "true"
+  }
+}
+```
+
+### mev_sendBundle
+
+`mev_sendBundle` uses a new bundle format to send bundles to MEV-Share. See the [Understanding Bundles](/flashbots-mev-share/searchers/understanding-bundles) page for more information, or check out the [Sending Bundles](/flashbots-mev-share/searchers/sending-bundles) page for a short guide. Note that as of October 20, 2025, a bundle can now only contain one backrun transaction.
+<SendBundleSpec />
+
+example request:
+
+```json
+{
+  "params": [
+    {
+      "version": "v0.1",
+      "inclusion": {
+        "block": "0x8b8da8",
+        "maxBlock": "0x8b8dab"
+      },
+      "body": [
+        {
+          "hash": "0x24e6e999b8abf2c4df46e8a02516c0983043039a5a54f89fa87274427ce64798"
+        },
+        {
+          "tx": "0x02f880058201d685e9103fda0085e9103fda368255f0940000c335bc9d5d1af0402cad63fa7f258363d71a8092696d206261636b72756e6e69696969696e67c080a0c5058ccf5759e29d4ad28e038f632a9b6269bbb0644c61447e0f14d56c453d73a048e877ee621c4b6be1234a8ad84379e80d45b288a7271e2b1aede7a04f06fd98",
+          "canRevert": false
+        }
+      ],
+      "validity": {
+        "refund": [],
+        "refundConfig": []
+      }
+    }
+  ],
+  "method": "mev_sendBundle",
+  "id": 1,
+  "jsonrpc": "2.0"
+}
+```
+
+example response:
+
+```json
+{
+  "bundleHash": "0x7d6e491ab67aee5f4b75321c936bf05664d2d9b234fd67083e46bd43bb42f383"
+}
+```
+
+### eth_callBundle
+
+`eth_callBundle` can be used to simulate a bundle against a specific block number, including simulating a bundle at the top of the next block. The `eth_callBundle` RPC has the following payload format:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_callBundle",
+  "params": [
+    {
+      txs,               // Array[String], A list of signed transactions to execute in an atomic bundle
+      blockNumber,       // String, a hex encoded block number for which this bundle is valid on
+      stateBlockNumber,  // String, either a hex encoded number or a block tag for which state to base this simulation on. Can use "latest"
+      timestamp,         // (Optional) Number, the timestamp to use for this bundle simulation, in seconds since the unix epoch
+    }
+  ]
+}
+```
+
+example:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_callBundle",
+  "params": [
+    {
+      "txs": ["0x123abc...", "0x456def..."],
+      "blockNumber": "0xb63dcd",
+      "stateBlockNumber": "latest",
+      "timestamp": 1615920932
+    }
+  ]
+}
+```
+
+example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "123",
+  "result": {
+    "bundleGasPrice": "476190476193",
+    "bundleHash": "0x73b1e258c7a42fd0230b2fd05529c5d4b6fcb66c227783f8bece8aeacdd1db2e",
+    "coinbaseDiff": "20000000000126000",
+    "ethSentToCoinbase": "20000000000000000",
+    "gasFees": "126000",
+    "results": [
+      {
+        "coinbaseDiff": "10000000000063000",
+        "ethSentToCoinbase": "10000000000000000",
+        "fromAddress": "0x02A727155aeF8609c9f7F2179b2a1f560B39F5A0",
+        "gasFees": "63000",
+        "gasPrice": "476190476193",
+        "gasUsed": 21000,
+        "toAddress": "0x73625f59CAdc5009Cb458B751b3E7b6b48C06f2C",
+        "txHash": "0x669b4704a7d993a946cdd6e2f95233f308ce0c4649d2e04944e8299efcaa098a",
+        "value": "0x"
+      },
+      {
+        "coinbaseDiff": "10000000000063000",
+        "ethSentToCoinbase": "10000000000000000",
+        "fromAddress": "0x02A727155aeF8609c9f7F2179b2a1f560B39F5A0",
+        "gasFees": "63000",
+        "gasPrice": "476190476193",
+        "gasUsed": 21000,
+        "toAddress": "0x73625f59CAdc5009Cb458B751b3E7b6b48C06f2C",
+        "txHash": "0xa839ee83465657cac01adc1d50d96c1b586ed498120a84a64749c0034b4f19fa",
+        "value": "0x"
+      }
+    ],
+    "stateBlockNumber": 5221585,
+    "totalGasUsed": 42000
+  }
+}
+```
+
+### mev_simBundle
+
+`mev_simBundle` uses a new bundle format to simulate matched bundles on MEV-Share. See [mev-share spec](https://github.com/flashbots/mev-share/blob/main/specs) for more information.
+
+<SimBundleSpec />
+
+example request (sent after landing a bundle via `mev_sendBundle`):
+
+```json
+{
+  "params": [
+    {
+      "inclusion": {
+        "block": "0x8b8da8",
+        "maxBlock": "0x8b8dab"
+      },
+      "body": [
+        {
+          "tx": "0x02f87b058201d5843b9aca00843b9aca368255f0940000c335bc9d5d1af0402cad63fa7f258363d71a808f696d20736861726969696969696e67c001a00d8d998fb0dc1e4da9b1de477acea54f185153d66d0af45a4ecfd20e453772baa07bd0ad1e1afb3f19749aaa5660f22859a6e485942346cd7186c024a5da747ada",
+          "canRevert": false
+        },
+        {
+          "tx": "0x02f880058201d685e9103fda0085e9103fda368255f0940000c335bc9d5d1af0402cad63fa7f258363d71a8092696d206261636b72756e6e69696969696e67c080a0c5058ccf5759e29d4ad28e038f632a9b6269bbb0644c61447e0f14d56c453d73a048e877ee621c4b6be1234a8ad84379e80d45b288a7271e2b1aede7a04f06fd98",
+          "canRevert": false
+        }
+      ],
+      "version": "v0.1",
+      "validity": {
+        "refund": [],
+        "refundConfig": []
+      }
+    },
+    {
+      "parentBlock": "0x8b8da8"
+    }
+  ],
+  "method": "mev_simBundle",
+  "id": 1,
+  "jsonrpc": "2.0"
+}
+```
+
+example response:
+
+```json
+{
+  "success": true,
+  "stateBlock": "0x8b8da8",
+  "mevGasPrice": "0x74c7906005",
+  "profit": "0x4bc800904fc000",
+  "refundableValue": "0x4bc800904fc000",
+  "gasUsed": "0xa620",
+  "logs": [{}, {}]
+}
+```
+
+### eth_cancelBundle
+
+`eth_cancelBundle` is used to prevent a submitted bundle from being included on-chain. See [bundle cancellations](/flashbots-auction/advanced/bundle-cancellations) for more information.
+
+[`eth_cancelPrivateTransaction`](https://docs.alchemy.com/alchemy/apis/ethereum/eth_cancelPrivateTransaction/?a=fb) is also supported on [Alchemy](https://alchemy.com/?a=fb).
+
+:::caution
+`replacementUuid` must have been set when bundle was submitted.
+:::
+
+:::caution
+When you cancel a bundle in Flashbots, the cancelled bundle is excluded from all future bids by the builder. However, there's no active adjustment to decrease the bid value on the relay for already placed bids. If the block value increases without your bundle, the bid might be replaced to reflect the new value.
+:::
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_cancelBundle",
+  "params": [
+    {
+      replacementUuid, // UUIDv4 to uniquely identify submission
+    }
+  ]
+}
+```
+
+### eth_sendPrivateTransaction
+
+`eth_sendPrivateTransaction` is used to send a single transaction to Flashbots. Flashbots will attempt to build a block including the transaction for the next 25 blocks. See [Private Transactions](/flashbots-protect/additional-documentation/eth-sendPrivateTransaction) for more info.
+
+[`eth_sendPrivateTransaction`](https://docs.alchemy.com/reference/eth-sendprivatetransaction?a=fb) is also supported on [Alchemy](https://alchemy.com?a=fb).
+
+This method has the following JSON-RPC format:
+
+```typescript
+{
+  jsonrpc: "2.0",
+  id: string | number,
+  method: "eth_sendPrivateTransaction",
+  params: [{
+    tx,               // String, raw signed transaction
+    maxBlockNumber,   // Hex-encoded number string, optional. Highest block number in which the transaction should be included.
+    preferences?: {
+      fast: boolean,  // Sends transactions to all registered block builders, sets MEV-Share revenue share to 50%
+      privacy?: {     // MEV-Share options; optional
+        hints?: Array< // data about tx to share w/ searchers on mev-share
+            "contract_address" |
+            "function_selector" |
+            "calldata" |
+            "logs" |
+            "hash"
+        >,
+        builders?: Array< // MEV-Share builders to exclusively receive bundles; optional
+            "default" |
+            "flashbots"
+        >,
+      },
+      validity?: {
+        refund?: Array<{address, percent}>
+      }
+    }
+  }]
+}
+```
+
+example request:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_sendPrivateTransaction",
+  "params": [
+    {
+      "tx": "0x123abc...",
+      "maxBlockNumber": "0xcd23a0",
+      "preferences": {
+        "fast": true,
+        "privacy": {
+          "hints": ["calldata", "transaction_hash"],
+          "builders": ["default"]
+        },
+        "validity": {
+          "refund": [{"address": "0xadd123", "percent": 50}]
+        }
+      }
+    }
+  ]
+}
+```
+
+example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": "0x45df1bc3de765927b053ec029fc9d15d6321945b23cac0614eb0b5e61f3a2f2a" // tx hash
+}
+```
+
+#### `privacy`
+
+By default, transactions are sent to the Flashbots MEV-Share Node with the default [Stable](/flashbots-protect/mev-refunds#stable-configuration) configuration. The `privacy` parameter allows you to specify your own privacy parameters.
+
+| Param | Type Info | Description |
+| --- | --- | --- |
+| `hint` | Array of strings | Each hint specifies which data about the transaction will be shared with searchers on mev-share. |
+| `builders` | Array of strings | Builders to grant permission to include the transaction in a block. |
+
+**`hint`**
+
+<Hints />
+
+**`builders`**
+
+Flashbots currently supports sending orderflow to the following block builders. This is subject to change over time.
+
+<Builders />
+
+#### `validity`
+
+Validity is used to specify the address and percentage to pay refund from the backrun of this transaction.
+
+By default, the refund is paid to the signer of the transaction and 90% of the backrun value is sent to the user by default.
+
+If multiple refund addresses are specified, then the backrun value is split between them according to the percentage specified. For example, if refund is `[{address: addr1, percent: 10}, {address: addr1, percent: 20}]` then 10% of the backrun value is sent to `addr1` and 20% is sent to `addr2` and 70% of the backrun value is left to the builder.
+
+| Param | Type Info | Description |
+| --- | --- | --- |
+| `refund` | Array of objects | Each entry in the array specifies address that should receive refund from backrun and percent of the backrun value. |
+| `refund[].address` | Address | Address that should receive refund. |
+| `refund[].percent` | Number | Percentage of the total backrun value that this address should receive. |
+
+### eth_sendPrivateRawTransaction
+
+`eth_sendPrivateRawTransaction` behaves like [eth_sendPrivateTransaction](#eth_sendprivatetransaction) but its format is similar to that of [`eth_sendRawTransaction`](https://docs.alchemy.com/reference/eth-sendrawtransaction)
+
+This method has the following JSON-RPC format:
+
+```typescript
+{
+  jsonrpc: "2.0",
+  id: string | number,
+  method: "eth_sendPrivateRawTransaction",
+  params: [
+    tx,               // String, raw signed transaction
+    preferences?: {
+      fast: boolean,  // Sends transactions to all registered block builders, sets MEV-Share revenue share to 50%
+      privacy?: {     // MEV-Share options; optional
+        hints?: Array< // data about tx to share w/ searchers on mev-share
+            "contract_address" |
+            "function_selector" |
+            "calldata" |
+            "logs" |
+            "hash"
+        >,
+        builders?: Array< // MEV-Share builders to exclusively receive bundles; optional
+            "default" |
+            "flashbots"
+        >,
+      },
+      validity?: {
+        refund?: Array<{address, percent}>
+      }
+    }
+  ]
+}
+```
+
+example request:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_sendPrivateRawTransaction",
+  "params": ["0x123abc..."]
+}
+```
+
+example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": "0x45df1bc3de765927b053ec029fc9d15d6321945b23cac0614eb0b5e61f3a2f2a" // tx hash
+}
+```
+
+| Param | Type Info | Description |
+| --- | --- | --- |
+| `params[0]` | String | Raw signed transaction |
+| `params[1]` | Object | Optional private tx preferences, see `preferences` in eth_sendPrivateTransaction. |
+
+### eth_cancelPrivateTransaction
+
+The `eth_cancelPrivateTransaction` method stops private transactions from being submitted for future blocks. A transaction can only be cancelled if the request is signed by the same key as the `eth_sendPrivateTransaction` call submitting the transaction in first place.
+
+[`eth_cancelPrivateTransaction`](https://docs.alchemy.com/reference/eth-cancelprivatetransaction?a=fb) is also supported for free on [Alchemy](https://alchemy.com?a=fb).
+
+This method has the following JSON-RPC format:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_cancelPrivateTransaction",
+  "params": [{
+    txHash,   // String, transaction hash of private tx to be cancelled
+  }]
+}
+```
+
+example request:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_cancelPrivateTransaction",
+  "params": [
+    {
+      "txHash": "0x45df1bc3de765927b053ec029fc9d15d6321945b23cac0614eb0b5e61f3a2f2a"
+    }
+  ]
+}
+```
+
+example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": true // true if tx successfully cancelled, false if not
+}
+```
+
+### flashbots_getFeeRefundTotalsByRecipient
+
+The `flashbots_getFeeRefundTotalsByRecipient` JSON-RPC method returns the total amount of fee refunds that have been earned by a specific address.  Our refund process calculates these values weekly.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "flashbots_getFeeRefundTotalsByRecipient",
+  "params": [
+    recipient,       // String, the address to query for fee refunds
+  ]
+}
+```
+
+The response contains three fields:
+
+```json
+{
+  "pending":"0x17812ea4fbbe314",
+  "received":"0x108d1b27b63a213",
+  "maxBlockNumber":"0x13ddb08"
+}
+```
+
+- `pending`: the total amount of fee refunds that have been earned but not yet received by the recipient
+- `received`: the total amount of fee refunds that have been received by the recipient
+- `maxBlockNumber`: the highest block number for which fee refunds have been processed
+
+### flashbots_getFeeRefundsByRecipient
+
+The `flashbots_getFeeRefundsByRecipient` JSON-RPC method returns detailed information about [fee refunds](/flashbots-protect/gas-fee-refunds) that have been earned by a specific address.  Our refund process usually calculates these values with a 4 hour delay.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "flashbots_getFeeRefundsByRecipient",
+  "params": [
+    {
+      recipient,       // String, the address to query for fee refunds
+      cursor,          // [optional] String, the cursor to continue from
+    }
+  ]
+}
+```
+
+Responses are paginated and contain the following fields:
+
+```json
+{
+  "refunds": [
+    {
+      "hash": "0x...",
+      "amount": "0x...",
+      "blockNumber": "0x13ddaa4",
+      "status": "pending",
+      "recipient": "0x..."
+    },
+    ...
+  ],
+  "cursor": "0x..."
+}
+```
+
+The `"refunds"` field contains an array of per-order fee refunds, each with the following fields:
+
+- `hash`: the bundle hash or transaction hash associated with the fee refund
+- `amount`: the amount of the fee refund, in wei
+- `blockNumber`: the block number the order was contained in
+- `status`: the status of the fee refund, either "pending" or "received"
+- `recipient`: the address the fee refund is credited to, either the bundle signer or transaction sender
+
+The `"cursor"` field is only included if there are more fee refunds to fetch. To continue fetching fee refunds, include the cursor as the second argument in the next request.
+
+NOTE: This API currently only returns details for bundles included in block 20802497 and later.  To see total fee refunds processed for a specific address since inception, use the `flashbots_getFeeRefundTotalsByRecipient` method.
+
+### flashbots_getFeeRefundsByBundle
+
+The `flashbots_getFeeRefundsByBundle` is similar to `flashbots_getFeeRefundsByRecipient` but returns result for the given bundle.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "flashbots_getFeeRefundsByBundle",
+  "params": [
+    {
+      bundle_hash,       // String, the hash of the bundle
+    }
+  ]
+}
+```
+
+### flashbots_getFeeRefundsByBlock
+
+The `flashbots_getFeeRefundsByBlock` is similar to `flashbots_getFeeRefundsByRecipient` but returns result for the given block.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "flashbots_getFeeRefundsByBlock",
+  "params": [
+    {
+      block_number,       // String, hex-encoded block number (e.g. 0x15d0280)
+    }
+  ]
+}
+```
+
+
+
+### flashbots_setFeeRefundRecipient
+
+The `flashbots_setFeeRefundRecipient` JSON-RPC method allows a user to "delegate" their [fee refunds](/flashbots-protect/gas-fee-refunds) to a specific wallet address.  Two addresses must be provided, the first is the address associated with the signing key used to authenticate your request, while the second is the address to send refunds to.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "flashbots_setFeeRefundRecipient",
+  "params": [
+    "0xD2824D2D7D6399a4b9A47F258B870D2AFb213948",
+    "0xa273A268CE96E54cF6a7D879B7d016F57E396F48"
+  ]
+}
+```
+
+If the first address matches the authentication signature, then a response with `from` and `to` fields in the result will be returned:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "from":"0xd2824d2d7d6399a4b9a47f258b870d2afb213948",
+    "to":"0xa273a268ce96e54cf6a7d879b7d016f57e396f48"
+  }
+}
+```
+
+If the signature is invalid or does not match the first address, an appropriate error will be returned instead.
+
+### buildernet_getDelayedRefunds
+
+The `buildernet_getDelayedRefunds` JSON-RPC method returns detailed information about delayed refunds.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "buildernet_getDelayedRefunds",
+  "params": [
+    {
+      recipient,       // String, the address that receives delayed refunds
+      blockRangeFrom,  // [optional] String, hex-encoded block number for the start of the range (inclusive)
+      blockRangeTo,    // [optional] String, hex-encoded block number for the end of the range (inclusive)
+      cursor,          // [optional] String, the cursor to continue from
+      hash,            // [optional] String, bundle hash; if provided, you must also set both blockRangeFrom and blockRangeTo
+    }
+  ]
+}
+```
+
+Responses are paginated and contain the following fields:
+
+```json
+{
+  "refunds": [
+    {
+      "hash": "0x...",
+      "amount": "0x...",
+      "blockNumber": "0x13ddaa4",
+      "status": "pending",
+      "recipient": "0x..."
+    },
+    ...
+  ],
+  "nextCursor": "0x..."
+  "indexedUpTo": "0x..."
+}
+```
+
+The `"refunds"` field contains an array of per-order fee refunds, each with the following fields:
+
+- `hash`: the bundle hash that generated delayed refund
+- `amount`: the amount of the delayed refund, in wei
+- `blockNumber`: the block number the order was contained in
+- `status`: the status of the delayed refund, either "pending" or "received"
+- `recipient`: the address the delayed refund is credited to
+
+The `"cursor"` field is only included if there are more delayed refunds to fetch, some data might be avaiable in the future. To continue fetching, include the cursor as the second argument in the next request. If response is empty but contains cursor retry later.
+
+`"indexedUpTo"` contains maximum block number for which delayed refunds are indexed
+
+### buildernet_getDelayedRefundTotalsByRecipient
+
+The `buildernet_getDelayedRefundTotalsByRecipient` JSON-RPC method returns the total amount of delayed refunds that have been earned by a specific address.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "buildernet_getDelayedRefundTotalsByRecipient",
+  "params": [{
+    recipient,       // String, the address to query for delayed refunds
+    blockRangeFrom,  // [optional] String, hex-encoded block number for the start of the range (inclusive)
+    blockRangeTo,    // [optional] String, hex-encoded block number for the end of the range (inclusive)
+  }]
+}
+```
+
+The response contains three fields:
+
+```json
+{
+  "pending":"0x17812ea4fbbe314",
+  "received":"0x108d1b27b63a213",
+  "indexedUpTo":"0x13ddb08"
+}
+```
+
+- `pending`: the total amount of fee refunds that have been earned but not yet received by the recipient
+- `received`: the total amount of fee refunds that have been received by the recipient
+- `indexedUpTo`: the highest block number for which delayed refunds have been processed
+
+
+### API Response
+
+- All method supports JSON-RPC standards for success response and not supported for error response(V2 methods are exceptions).
+- V2 methods supports JSON-RPC standards for both success and error response.
+
+### Authentication
+
+To authenticate your request, Flashbots endpoints require you to sign the payload and include the signed payload in the `X-Flashbots-Signature` header of your request.
+
+```curl
+curl -X POST -H "Content-Type: application/json" -H "X-Flashbots-Signature: <public key address>:<signature>" --data '{"jsonrpc":"2.0","method":"eth_sendBundle","params":[{see above}],"id":1}' https://relay.flashbots.net
+```
+
+Any valid ECDSA-secp256k1 key, like an arbitrary Ethereum key, can be used to sign the payload. The address associated with this key will be used by Flashbots to keep track of your [reputation](/flashbots-auction/advanced/reputation) over time and provide user statistics. You can change the key you use at any time.
+
+The signature is calculated by taking the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) hash of the json body encoded as UTF-8 bytes. Here's an example using ethers.js:
+
+<Tabs
+  defaultValue="ethers.js"
+  values={[
+    { label: 'ethers.js', value: 'ethers.js', },
+    { label: 'web3.py', value: 'web3.py' },
+    { label: 'go', value: 'go' },
+  ]}
+>
+<TabItem value="ethers.js">
+
+```ts
+import {Wallet, id} from 'ethers';
+
+const privateKey = '0x1234';
+const wallet = new Wallet(privateKey);
+const body =
+  '{"jsonrpc":"2.0","method":"eth_sendBundle","params":[{see above}],"id":1}';
+const signature = wallet.address + ':' + wallet.signMessage(id(body));
+```
+
+</TabItem>
+<TabItem value="web3.py">
+
+```py
+from web3 import Web3
+from eth_account import Account, messages
+
+body = '{"jsonrpc":"2.0","method":"eth_sendBundle","params":[{see above}],"id":1}'
+message = messages.encode_defunct(text=Web3.keccak(text=body).hex())
+signature = Account.from_key(private_key).address + ':' + Account.sign_message(message, private_key).signature.hex()
+```
+
+</TabItem>
+<TabItem value="go">
+
+```go
+body := `{"jsonrpc":"2.0","method":"eth_sendBundle","params":[{see above}],"id":1}`
+hashedBody := crypto.Keccak256Hash([]byte(body)).Hex()
+sig, err := crypto.Sign(accounts.TextHash([]byte(hashedBody)), privKey)
+signature := crypto.PubkeyToAddress(privKey.PublicKey).Hex() + ":" + hexutil.Encode(sig)
+```
+
+</TabItem>
+</Tabs>

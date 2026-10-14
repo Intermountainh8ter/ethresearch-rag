@@ -4,8 +4,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python: ["3.10", "3.12"]
+        python: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -13,5 +14,15 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: pip install -e ".[dev]"
       - run: ruff check .
-      - run: pytest -q
-      - run: python evals/run_evals.py --min-hybrid-recall5 0.75
+      - run: pytest -q --cov=ethrag --cov-report=term
+      # Eval gate on the HELD-OUT split only (fusion/reranker weights are fit on train).
+      - run: python evals/run_evals.py --min-test-hybrid-recall5 0.80
+      - run: python -m ethrag.cli build-index --data data --out .index
+      - run: python -m ethrag.cli ask --index .index "What opcode number does BASEFEE use?"
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ethrag .
+      - run: docker run --rm ethrag ask "Which transaction type byte identifies blob transactions?"
