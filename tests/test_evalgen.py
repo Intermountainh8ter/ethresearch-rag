@@ -156,7 +156,10 @@ def test_valid_question_has_no_problems(idx):
     ({"gold": [["eip-9999", "x"]]}, "not found"),
     ({"answer": "BASE_FEE_MAX_CHANGE_DENOMINATOR is 7"}, "not supported"),
     ({"wrong": "BASE_FEE_MAX_CHANGE_DENOMINATOR is 8"}, "equals the correct"),
-    ({"wrong": "BASE_FEE_MAX_CHANGE_DENOMINATOR is 2"}, "supported by the gold"),
+    ({"gold": [["eip-2930", "ACCESS_LIST_ADDRESS_COST = 2400"]],
+      "q": "What does an address in an access list cost in EIP-2930?",
+      "answer": "ACCESS_LIST_ADDRESS_COST is 2400", "wrong": "ACCESS_LIST_ADDRESS_COST is 1900"},
+     "supported by the gold"),  # both values sit on one line: the verifier cannot tell them apart
     ({"answer": "", "wrong": "x is 3"}, "without a correct"),
     ({"q": "BASE_FEE_MAX_CHANGE_DENOMINATOR is 8, right?"}, "already contains"),
 ])

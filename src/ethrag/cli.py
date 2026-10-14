@@ -28,8 +28,12 @@ def _add_pipeline_opts(p: argparse.ArgumentParser) -> None:
     p.add_argument("-k", type=int, default=5, help="chunks to retrieve")
     p.add_argument("--rerank", metavar="WEIGHTS.json", help="rerank with trained logistic weights")
     p.add_argument("--expand-graph", action="store_true", help="add chunks from `requires` neighbours")
-    p.add_argument("--min-coverage", type=float, default=0.5)
-    p.add_argument("--min-relevance", type=float, default=0.25)
+    p.add_argument("--min-coverage", type=float, default=0.7,
+                   help="share of an answer sentence's content words that the cited chunks must contain")
+    p.add_argument("--min-relevance", type=float, default=0.1,
+                   help="share of the question's topical words the answer must repeat")
+    p.add_argument("--min-novelty", type=float, default=0.0,
+                   help="reject answers that mostly restate the question (0 = off)")
     p.add_argument("--no-negation-check", action="store_true")
 
 
@@ -50,7 +54,8 @@ def build_pipeline(a: argparse.Namespace):
     kw = {}
     if hasattr(a, "k"):
         kw = {"k": a.k, "expand_graph": a.expand_graph, "min_coverage": a.min_coverage,
-              "min_relevance": a.min_relevance, "check_negation": not a.no_negation_check}
+              "min_relevance": a.min_relevance, "min_novelty": a.min_novelty,
+              "check_negation": not a.no_negation_check}
         if a.rerank:
             from .rerank import LogisticReranker
 

@@ -21,36 +21,13 @@ import random
 import re
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
 
+from .constants import DEC, HEX, Constant, canon, mine_constants  # noqa: F401 - re-exported
 from .graph import CitationGraph
 from .ingest import Chunk
 from .verify import claim_tokens, verify_answer
 
-NAME_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$")
-_HEX = r"0x[0-9a-fA-F]{1,64}"
-_DEC = r"\d[\d,_]*"
-_POW = r"2\*\*\d+"
-VALUE_RE = re.compile(rf"^(?:{_HEX}|{_DEC}|{_POW})$")
-_WRAPPED = re.compile(rf"^[A-Za-z][A-Za-z0-9]*\(\s*({_HEX}|{_DEC}|{_POW})\s*\)(?:\s*\(=\s*[\d,_]+\))?$")
-
-_ROW = re.compile(r"^\|\s*`?([A-Z][A-Z0-9_]+)`?\s*\|\s*([^|\n]+?)\s*(?=\|)", re.MULTILINE)
-_CODE = re.compile(
-    rf"^[ \t]*([A-Z][A-Z0-9_]+)(?:[ \t]*:[ \t]*[A-Za-z0-9_\[\], ]+)?[ \t]*=[ \t]*({_HEX}|{_DEC}|2\*\*\d+)"
-    r"[ \t]*(?:#.*)?$", re.MULTILINE)
-_PROSE = re.compile(rf"`([A-Z][A-Z0-9_]+)`[ \t]*(?:=|:|is|of)[ \t]*`?({_HEX}|{_DEC})`?(?![\w.])")
-
 TYPES = ("constant", "concept", "multihop")
-
-
-@dataclass(frozen=True)
-class Constant:
-    doc: str
-    chunk_id: str
-    name: str
-    value: str  # normalised to ``2**n`` / hex / decimal as written in the source
-    needle: str  # verbatim substring of the chunk text containing both name and value
-    kind: str  # row | code | prose
 
 
 def doc_label(chunk: Chunk) -> str:
@@ -64,54 +41,6 @@ def doc_label(chunk: Chunk) -> str:
     return chunk.title
 
 
-def _clean_value(cell: str) -> str | None:
-    cell = cell.replace("`", "").replace("\\*", "*").strip()
-    m = _WRAPPED.match(cell)
-    if m:
-        cell = m.group(1)
-    cell = re.sub(r"\s+", "", cell) if "**" in cell else cell
-    return cell if VALUE_RE.match(cell) else None
-
-
-def _small(value: str) -> bool:
-    return value.isdigit() and int(value) < 2
-
-
-def mine_constants(chunks: Iterable[Chunk]) -> list[Constant]:
-    """Unambiguous ``NAME = value`` definitions (one value per (doc, NAME)) in chunk text."""
-    found: list[Constant] = []
-    for c in chunks:
-        text = c.text
-        for m in _ROW.finditer(text):
-            value = _clean_value(m.group(2))
-            if value and NAME_RE.match(m.group(1)) and not _small(value):
-                start = m.start(1) - (1 if m.start(1) > 0 and text[m.start(1) - 1] == "`" else 0)
-                found.append(Constant(c.doc, c.id, m.group(1), value, text[start:m.end(2)], "row"))
-        for m in _CODE.finditer(text):
-            value = _clean_value(m.group(2))
-            if value and NAME_RE.match(m.group(1)) and not _small(value):
-                found.append(Constant(c.doc, c.id, m.group(1), value, m.group(0).strip(), "code"))
-        for m in _PROSE.finditer(text):
-            value = _clean_value(m.group(2))
-            if value and NAME_RE.match(m.group(1)) and not _small(value):
-                found.append(Constant(c.doc, c.id, m.group(1), value, m.group(0), "prose"))
-    values: dict[tuple[str, str], set[str]] = defaultdict(set)
-    for k in found:
-        values[(k.doc, k.name)].add(_canon(k.value))
-    seen: set[tuple[str, str]] = set()
-    out: list[Constant] = []
-    for k in found:
-        key = (k.doc, k.name)
-        if len(values[key]) != 1 or key in seen:
-            continue  # ambiguous inside the document, or already taken
-        seen.add(key)
-        out.append(k)
-    return out
-
-
-def _canon(value: str) -> str:
-    return re.sub(r"[\s,_\\]", "", value).lower()
-
 
 # ----------------------------------------------------------------------------- perturbations
 def perturb(value: str) -> list[str]:
@@ -122,7 +51,7 @@ def perturb(value: str) -> list[str]:
     if m:
         n = int(m.group(1))
         out = [f"2**{k}" for k in (n + 1, n - 1, n + 2, n - 2, n + 3) if k >= 0 and k != n]
-    elif re.fullmatch(_HEX, v):
+    elif re.fullmatch(HEX, v):
         digits = v[2:]
         n = int(digits, 16)
         width = len(digits)
@@ -130,7 +59,7 @@ def perturb(value: str) -> list[str]:
         cands = [n + 1, n - 1, n + 2, n ^ 0x10, n * 2, n + 3] if n < 2**32 else [n ^ 1, n ^ 0x10, n ^ 0x100]
         out = [f"0x{format(x, f'0{width}{fmt}')}" for x in cands
                if x >= 0 and x != n and len(format(x, 'x')) <= width]
-    elif re.fullmatch(_DEC, v):
+    elif re.fullmatch(DEC, v):
         sep = "," if "," in v else ("_" if "_" in v else "")
         n = int(re.sub(r"[,_]", "", v))
         for x in (n * 2, n // 2, n + 1, n - 1, n * 4, n // 4, n * 10, n // 10, n + 2, n + 10):
@@ -139,7 +68,7 @@ def perturb(value: str) -> list[str]:
     seen: set[str] = set()
     uniq = []
     for x in out:
-        if _canon(x) != _canon(v) and x not in seen:
+        if canon(x) != canon(v) and x not in seen:
             seen.add(x)
             uniq.append(x)
     return uniq
@@ -166,7 +95,7 @@ def pick_wrong(answer: str, old: str, cites: Sequence[str], by_id: dict[str, Chu
     return None
 
 
-_TOKEN_SPAN = re.compile(rf"{_HEX}|2\*\*\d+|{_DEC}")
+_TOKEN_SPAN = re.compile(rf"{HEX}|2\*\*\d+|{DEC}")
 
 
 _REF_BEFORE = re.compile(r"(?:EIP|ERC)[-\s]?$", re.IGNORECASE)

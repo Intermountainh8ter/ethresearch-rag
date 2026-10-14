@@ -147,3 +147,38 @@ def test_extractive_skips_fragments_shorter_than_three_tokens():
     c = Chunk("eip-1#000", "eip-1", "T", "S", "EIP-1 T / S\nYes burn.\n\nThe fee burn is mandatory for all blocks.")
     out = extractive_answer("fee burn", [c])
     assert out.startswith("The fee burn is mandatory") and out.endswith("[eip-1#000].")
+
+
+def test_definition_answer_exact_names_spelled_names_and_nothing(mini_chunks):
+    from ethrag.pipeline import definition_answer
+
+    ctx = [c for c in mini_chunks if c.doc in ("eip-1559", "eip-4844", "eip-2929", "cl-phase0-beacon-chain")]
+    out = definition_answer("What are BASE_FEE_MAX_CHANGE_DENOMINATOR and ELASTICITY_MULTIPLIER in EIP-1559?", ctx)
+    assert out.count("[eip-1559#") == 2 and "BASE_FEE_MAX_CHANGE_DENOMINATOR is 8" in out
+    assert "ELASTICITY_MULTIPLIER is 2" in out
+    spelled = definition_answer("How many seconds per slot are there?", ctx)
+    assert spelled.startswith("SECONDS_PER_SLOT is 12 [cl-phase0-beacon-chain#")
+    assert definition_answer("What is the cold sload cost in EIP-2929?", ctx).startswith("COLD_SLOAD_COST is 2100")
+    assert definition_answer("What does a typed transaction envelope look like?", ctx) is None
+    assert definition_answer("anything", []) is None
+
+
+def test_definition_answer_prefers_the_document_the_question_names(mini_chunks):
+    from ethrag.ingest import Chunk
+    from ethrag.pipeline import definition_answer
+
+    a = Chunk("eip-1#000", "eip-1", "T", "S", "| `LIMIT_VALUE` | 5 |", number=1)
+    b = Chunk("eip-2#000", "eip-2", "T", "S", "| `LIMIT_VALUE` | 9 |", number=2)
+    assert definition_answer("What is LIMIT_VALUE in EIP-2?", [a, b]) == "LIMIT_VALUE is 9 [eip-2#000]."
+    assert definition_answer("What is LIMIT_VALUE in EIP-1?", [b, a]) == "LIMIT_VALUE is 5 [eip-1#000]."
+
+
+def test_extractive_baseline_cannot_pass_by_answering_a_different_question(mini_chunks, mini_index, cid):
+    p = RagPipeline(mini_chunks, None, index=mini_index)
+    ctx = p.retrieve("What are the withdrawals in the beacon chain?")
+    burn = cid("eip-1559", "not paid to the miner")
+    other = f"The base fee is not paid to the miner; it is burned [{burn}]."
+    ids = [c.id for c in ctx] + [burn]
+    assert not p.verify("How many seconds per slot are there?", other, ids).ok
+    assert RagPipeline(mini_chunks, None, index=mini_index, min_relevance=0.0).verify(
+        "How many seconds per slot are there?", other, ids).ok  # without the check it would verify
