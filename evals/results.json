@@ -874,7 +874,7 @@
    "kind_table": 0.31856591849283505,
    "log_len": 0.4560003062023775
   },
-  "path": "/home/user/ethresearch-rag/evals/artifacts/reranker.json"
+  "path": "evals/artifacts/reranker.json"
  },
  "retrieval": {
   "train": [

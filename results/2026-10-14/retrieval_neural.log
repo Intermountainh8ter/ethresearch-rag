@@ -1,0 +1,127 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 3377.75it/s]
+corpus: 901 docs, 17387 chunks   questions: 504 (train 353 / test 151; 54 multi-hop)   index ready in 307.0s
+
+==============================================================================
+fusion sweep on the TRAIN split (w = BM25 share of the RRF credit; boost = EIP-number boost)
+==============================================================================
+| system | R@1 | R@3 | R@5 | R@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| w=0.0 | 0.470 | 0.649 | 0.739 | 0.807 | 0.576 | 0.588 |
+| w=0.1 | 0.484 | 0.674 | 0.754 | 0.830 | 0.594 | 0.610 |
+| w=0.2 | 0.484 | 0.686 | 0.771 | 0.844 | 0.602 | 0.623 |
+| w=0.3 | 0.490 | 0.708 | 0.807 | 0.918 | 0.627 | 0.661 |
+| w=0.4 | 0.507 | 0.731 | 0.805 | 0.918 | 0.640 | 0.672 |
+| w=0.5 | 0.533 | 0.734 | 0.822 | 0.926 | 0.656 | 0.686 |
+| w=0.6 | 0.518 | 0.742 | 0.822 | 0.929 | 0.652 | 0.683 |
+| w=0.7 | 0.533 | 0.751 | 0.827 | 0.938 | 0.661 | 0.694 |
+| w=0.8 | 0.541 | 0.754 | 0.833 | 0.943 | 0.668 | 0.704 |
+| w=0.9 | 0.544 | 0.768 | 0.844 | 0.941 | 0.668 | 0.702 |
+| w=1.0 | 0.552 | 0.756 | 0.844 | 0.932 | 0.671 | 0.700 |
+| system | R@1 | R@3 | R@5 | R@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| boost=0.0 | 0.501 | 0.725 | 0.824 | 0.912 | 0.630 | 0.670 |
+| boost=0.5 | 0.544 | 0.765 | 0.844 | 0.932 | 0.666 | 0.701 |
+| boost=1.0 | 0.544 | 0.768 | 0.844 | 0.938 | 0.668 | 0.702 |
+| boost=2.0 | 0.544 | 0.768 | 0.844 | 0.941 | 0.668 | 0.702 |
+| boost=4.0 | 0.544 | 0.768 | 0.844 | 0.941 | 0.668 | 0.701 |
+chosen on train among 0<w<1: w*=0.9 boost*=2.0   (R@5 0.844, nDCG@10 0.702); best cell overall: w=0.9
+
+reranker: 17650 train candidates (597 positive), L2=0.01 chosen by grouped 3-fold CV on train {0.001: 0.9603399433427762, 0.01: 0.9603399433427762, 0.1: 0.9518413597733711, 1.0: 0.9320113314447592}
+  largest standardised weights: bm25=+0.92, fused=+0.60, sec_abstract=+0.38, log_len=+0.38, dense=+0.35, lex_overlap=+0.32
+
+==============================================================================
+retrieval, TRAIN split (n=353; hit = a retrieved chunk contains the gold text)
+==============================================================================
+| system | R@1 | R@3 | R@5 | R@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| bm25 | 0.518 | 0.725 | 0.819 | 0.918 | 0.640 | 0.676 |
+| dense(BAAI/bge-small-en-v1.5) | 0.348 | 0.541 | 0.623 | 0.700 | 0.460 | 0.465 |
+| hybrid | 0.544 | 0.768 | 0.844 | 0.941 | 0.668 | 0.702 |
+| hybrid+rerank | 0.728 | 0.935 | 0.960 | 0.986 | 0.831 | 0.846 |
+| hybrid+graph | 0.544 | 0.768 | 0.844 | 0.918 | 0.666 | 0.693 |
+
+==============================================================================
+retrieval, TEST split (n=151; hit = a retrieved chunk contains the gold text)
+==============================================================================
+| system | R@1 | R@3 | R@5 | R@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| bm25 | 0.424 | 0.702 | 0.788 | 0.901 | 0.579 | 0.622 |
+| dense(BAAI/bge-small-en-v1.5) | 0.232 | 0.470 | 0.563 | 0.689 | 0.371 | 0.381 |
+| hybrid | 0.523 | 0.735 | 0.815 | 0.940 | 0.653 | 0.688 |
+| hybrid+rerank | 0.709 | 0.874 | 0.921 | 0.974 | 0.800 | 0.811 |
+| hybrid+graph | 0.523 | 0.735 | 0.815 | 0.907 | 0.650 | 0.673 |
+   by type [constant n=93]  bm25: R@5=0.892  dense(BAAI/bge-small-en-v1.5): R@5=0.624  hybrid: R@5=0.925  hybrid+rerank: R@5=0.968  hybrid+graph: R@5=0.925
+   by type [concept n=42]  bm25: R@5=0.500  dense(BAAI/bge-small-en-v1.5): R@5=0.357  hybrid: R@5=0.524  hybrid+rerank: R@5=0.786  hybrid+graph: R@5=0.524
+   by type [multihop n=16]  bm25: R@5=0.938  dense(BAAI/bge-small-en-v1.5): R@5=0.750  hybrid: R@5=0.938  hybrid+rerank: R@5=1.000  hybrid+graph: R@5=0.938
+   by tier (test R@5, hybrid vs bm25 vs hybrid+rerank):
+     both-named       n=  6  1.000  1.000  1.000
+     exact-id         n= 12  1.000  1.000  1.000
+     name-only        n=  6  0.833  0.833  0.833
+     purpose          n= 20  0.400  0.350  0.850
+     second-by-id     n=  2  1.000  1.000  1.000
+     seed-concept     n= 22  0.591  0.682  0.727
+     seed-constant    n= 55  0.873  0.891  0.982
+     seed-multihop    n=  8  0.875  0.875  1.000
+     words            n= 20  0.900  1.000  0.950
+
+==============================================================================
+sensitivity: TEST split without the synthetic 'purpose' tier (n=131)
+==============================================================================
+| system | R@1 | R@3 | R@5 | R@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| bm25 | 0.481 | 0.786 | 0.847 | 0.931 | 0.639 | 0.670 |
+| dense(BAAI/bge-small-en-v1.5) | 0.260 | 0.527 | 0.618 | 0.740 | 0.411 | 0.414 |
+| hybrid | 0.603 | 0.817 | 0.885 | 0.977 | 0.728 | 0.749 |
+| hybrid+rerank | 0.740 | 0.893 | 0.931 | 0.985 | 0.826 | 0.828 |
+| hybrid+graph | 0.603 | 0.817 | 0.885 | 0.954 | 0.726 | 0.736 |
+
+==============================================================================
+ablations (same tuned w*/boost*; shows where hybrid gains or loses against plain BM25)
+==============================================================================
+[train]
+| system | R@1 | R@3 | R@5 | R@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| bm25+eip-boost | 0.552 | 0.756 | 0.844 | 0.932 | 0.671 | 0.700 |
+| dense+eip-boost | 0.470 | 0.649 | 0.739 | 0.807 | 0.576 | 0.588 |
+| hybrid(rrf w=0.5, no boost) | 0.476 | 0.657 | 0.756 | 0.847 | 0.590 | 0.610 |
+| hybrid(rrf w=0.5, boost=1) | 0.533 | 0.734 | 0.819 | 0.921 | 0.655 | 0.684 |
+| hybrid(w*, restrict to named EIP) | 0.544 | 0.768 | 0.844 | 0.941 | 0.668 | 0.700 |
+[test]
+| system | R@1 | R@3 | R@5 | R@10 | MRR@10 | nDCG@10 |
+|---|---|---|---|---|---|---|
+| bm25+eip-boost | 0.497 | 0.735 | 0.821 | 0.927 | 0.642 | 0.675 |
+| dense+eip-boost | 0.444 | 0.662 | 0.735 | 0.815 | 0.565 | 0.569 |
+| hybrid(rrf w=0.5, no boost) | 0.404 | 0.649 | 0.742 | 0.821 | 0.541 | 0.556 |
+| hybrid(rrf w=0.5, boost=1) | 0.510 | 0.722 | 0.808 | 0.914 | 0.639 | 0.662 |
+| hybrid(w*, restrict to named EIP) | 0.523 | 0.735 | 0.815 | 0.940 | 0.653 | 0.688 |
+
+==============================================================================
+multi-hop questions: doc-set recall (every gold document appears in the top-k results)
+==============================================================================
+| system | n | docset@5 | docset@10 | R@10 |
+|---|---|---|---|---|
+| train: bm25 | 38 | 0.605 | 0.816 | 1.000 |
+| train: dense(BAAI/bge-small-en-v1.5) | 38 | 0.316 | 0.500 | 0.868 |
+| train: hybrid | 38 | 0.605 | 0.737 | 0.974 |
+| train: hybrid+rerank | 38 | 0.737 | 0.947 | 1.000 |
+| train: hybrid+graph | 38 | 0.605 | 0.789 | 1.000 |
+| test: bm25 | 16 | 0.500 | 0.750 | 0.938 |
+| test: dense(BAAI/bge-small-en-v1.5) | 16 | 0.250 | 0.500 | 0.875 |
+| test: hybrid | 16 | 0.500 | 0.688 | 1.000 |
+| test: hybrid+rerank | 16 | 0.938 | 0.938 | 1.000 |
+| test: hybrid+graph | 16 | 0.500 | 0.688 | 1.000 |
+
+==============================================================================
+paired bootstrap on the TEST split (2000 resamples, 95% CI of the difference)
+==============================================================================
+  hybrid         - bm25            R@5      +0.026  [-0.007, +0.060]  not distinguishable
+  hybrid         - bm25            nDCG@10  +0.066  [+0.036, +0.097]  better
+  hybrid         - bm25+eip-boost  R@5      -0.007  [-0.033, +0.020]  not distinguishable
+  hybrid         - bm25+eip-boost  nDCG@10  +0.013  [-0.007, +0.034]  not distinguishable
+  hybrid+rerank  - hybrid          R@5      +0.106  [+0.053, +0.166]  better
+  hybrid+rerank  - hybrid          nDCG@10  +0.123  [+0.088, +0.160]  better
+  hybrid+graph   - hybrid          R@5      +0.000  [+0.000, +0.000]  not distinguishable
+  hybrid+graph   - hybrid          nDCG@10  -0.015  [-0.025, -0.007]  worse
+
+wrote results/2026-10-14/retrieval_neural.json   total 1088.1s

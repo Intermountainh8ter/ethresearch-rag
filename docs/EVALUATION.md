@@ -156,7 +156,7 @@ isolates why it looks ahead at all: BM25 given the *same* EIP-number boost is ju
 0.649; interval of the difference [-0.052, +0.002]). The grid search on train also scored w = 1.0
 (pure BM25 + boost) at least as high as any fused cell; only the rule "a hybrid must fuse"
 selected w = 0.5. The dense side here is a hashed lexical baseline; a real embedding model is
-the obvious next experiment (`SentenceTransformerEmbedder`, optional, not exercised in CI).
+measured once with `--embedder neural` (`BAAI/bge-small-en-v1.5`; see README and `results/2026-10-14/`): no gain in R@5 on test. `SentenceTransformerEmbedder` stays optional and is not exercised in CI.
 
 Paired bootstrap, 2000 resamples, TEST:
 

@@ -1,6 +1,14 @@
 # ethrag
 
 Citation-verified retrieval-augmented Q&A over Ethereum specifications (EIPs, ERCs, consensus
+
+
+## For the lay reader
+
+- [docs/diagrams/explainer.svg](docs/diagrams/explainer.svg) &mdash; a one-page
+  summary in ordinary words: the question, one chart, the finding, and why it
+  matters. No background assumed.
+- [GLOSSARY.md](GLOSSARY.md) &mdash; every abbreviation this repo uses, defined.
 specs, Flashbots docs). Generation is untrusted; a **deterministic verifier** decides whether a
 draft is released: every sentence must be cited, every citation must have been retrieved, and
 every number, hex value, `2**n` and `ALL_CAPS` identifier in the answer must be found in the
@@ -148,12 +156,18 @@ Read it honestly:
 
 * **Hybrid does not clearly beat BM25.** +2.6 points R@5 over raw BM25 on test, paired-bootstrap
   95% interval [-0.020, +0.073]. BM25 given the same EIP-number boost is just as good (R@5 0.821
-  vs 0.815). The "dense" side is a hashed lexical baseline, not a neural embedder.
+  vs 0.815). The default "dense" side is a hashed lexical baseline, not a neural embedder.
 * **The learned reranker is the real gain:** R@5 0.815 -> 0.934 (+0.119, interval
   [+0.066, +0.172]). Part of that is regularity in the question generator (purpose questions
   always point at Abstract chunks; the reranker learns a section prior): without that tier R@5
   goes 0.878 -> 0.931.
 * **Graph expansion did not help** here (R@5 unchanged, nDCG@10 slightly worse).
+* **A real neural embedder did not help R@5** (`--embedder neural`, `BAAI/bge-small-en-v1.5`, one run,
+  weights fit on train only; log and tried-configs in `results/2026-10-14/`). On test, dense alone is
+  *worse* than the hashed baseline (R@5 0.563 vs 0.609). Hybrid R@5 is unchanged (0.815 both ways),
+  hybrid nDCG@10 is higher (0.688 vs 0.649), and hybrid+rerank R@5 is slightly lower (0.921 vs
+  0.934). One embedder, one corpus, a synthetic question set: it does not show that neural
+  retrieval is useless here, only that this small model adds no measurable recall.
 * The test split is small and the question set synthetic; development looked at both splits.
   TEST numbers are optimistic.
 
@@ -225,7 +239,7 @@ tests/        pytest suite (offline)
 
 ## Limitations
 
-Synthetic eval set; hashed (not neural) dense retrieval; lexical verifier; extractive baseline
+Synthetic eval set; hashed dense retrieval by default (one neural embedder measured, no gain in R@5); lexical verifier; extractive baseline
 is weak on explanatory questions; the CLI is English-only; no streaming; the MCP server
 implements tools only (no resources or prompts); the Dockerfile and the Anthropic generator
 path were not exercised against live services here.
