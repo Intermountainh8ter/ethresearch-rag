@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import sys
 import time
-import pathlib
 from pathlib import Path
 
 import numpy as np
