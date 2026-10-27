@@ -1,0 +1,48 @@
+{
+ "split": "test",
+ "population": 75,
+ "false_withhold_rate": {
+  "default_0_1": 0.0,
+  "relevance_0_25": 0.0
+ },
+ "false_withhold_wilson": {
+  "default_0_1": {
+   "k": 0,
+   "n": 75,
+   "rate": 0.0,
+   "wilson_lo": 0.0,
+   "wilson_hi": 0.04872554590470005
+  },
+  "relevance_0_25": {
+   "k": 0,
+   "n": 75,
+   "rate": 0.0,
+   "wilson_lo": 0.0,
+   "wilson_hi": 0.04872554590470005
+  }
+ },
+ "issue_type_counts": {
+  "default_0_1": {},
+  "relevance_0_25": {}
+ },
+ "added_withholds": {
+  "n": 0,
+  "with_relevance_issue": 0,
+  "relevance_majority": false
+ },
+ "provenance": {
+  "started_at": "2026-10-27T00:24:32Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_relevance_false_withhold.py --seed 7 --out results/67-relevance-false-withhold.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 5.57,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}
