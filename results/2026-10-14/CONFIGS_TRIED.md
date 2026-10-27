@@ -56,4 +56,4 @@ hybrid R@1 0.523 in both runs); only the row label differs.
   documented default. Sweeping embedders and picking the best would be tuning
   on a split, and there is no second held-out split to protect it.
 - **No reranker hyper-parameter changes.** Used as shipped.
-- **No corpus changes.** The bundled 23-EIP corpus throughout.
+- **No corpus changes.** The bundled corpus (901 documents, 17,387 chunks) throughout.
