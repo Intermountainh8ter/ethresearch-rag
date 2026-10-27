@@ -233,3 +233,11 @@ path were not exercised against live services here.
 ## License
 
 MIT, copyright Ammon Jackson. Corpus documents keep their upstream licences (`data/LICENSE`).
+
+### Strictness ladder, false withholds (iteration 68)
+
+On the 288 TRAIN+TEST questions whose offline extractive answer contains the reference value
+(`results/68-strictness-ladder-false-withhold.json`), the shipped default withholds a rate of
+0.0034722 and the combined strict setting (min_coverage 0.95, min_novelty 0.3, min_relevance 0.25)
+withholds a rate of 0.3159722. Of the 90 added withholds, 89 carry a novelty issue. Reproduce:
+`python3 evals/run_strictness_ladder_false_withhold.py --seed 7 --out results/68-strictness-ladder-false-withhold.json`.

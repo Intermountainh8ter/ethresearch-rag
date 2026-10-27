@@ -1,0 +1,81 @@
+{
+ "split": "train+test",
+ "population": 288,
+ "false_withhold_rate": {
+  "default": 0.003472222222222222,
+  "strict_coverage": 0.003472222222222222,
+  "strict_novelty": 0.3125,
+  "strict_combined": 0.3159722222222222
+ },
+ "false_withhold_wilson": {
+  "default": {
+   "k": 1,
+   "n": 288,
+   "rate": 0.003472222222222222,
+   "wilson_lo": 0.0006131798857472621,
+   "wilson_hi": 0.01940315774398065
+  },
+  "strict_coverage": {
+   "k": 1,
+   "n": 288,
+   "rate": 0.003472222222222222,
+   "wilson_lo": 0.0006131798857472621,
+   "wilson_hi": 0.01940315774398065
+  },
+  "strict_novelty": {
+   "k": 90,
+   "n": 288,
+   "rate": 0.3125,
+   "wilson_lo": 0.26173142718669185,
+   "wilson_hi": 0.36820481219796075
+  },
+  "strict_combined": {
+   "k": 91,
+   "n": 288,
+   "rate": 0.3159722222222222,
+   "wilson_lo": 0.26500078876843874,
+   "wilson_hi": 0.3717884832202017
+  }
+ },
+ "issue_type_counts": {
+  "default": {
+   "range": 1
+  },
+  "strict_coverage": {
+   "range": 1
+  },
+  "strict_novelty": {
+   "novelty": 89,
+   "range": 1
+  },
+  "strict_combined": {
+   "novelty": 89,
+   "range": 1,
+   "relevance": 1
+  }
+ },
+ "added_withholds": {
+  "n": 90,
+  "by_issue_type": {
+   "novelty": 89,
+   "relevance": 1
+  },
+  "with_novelty_issue": 89,
+  "novelty_majority": true
+ },
+ "provenance": {
+  "started_at": "2026-10-27T00:28:02Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_strictness_ladder_false_withhold.py --seed 7 --out results/68-strictness-ladder-false-withhold.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 7.33,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}
