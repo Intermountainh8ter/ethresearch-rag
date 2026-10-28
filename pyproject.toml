@@ -27,6 +27,12 @@ llm = ["anthropic>=0.40"]
 embed = ["sentence-transformers>=2.2"]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.5"]
 
+[project.urls]
+Homepage = "https://github.com/Intermountainh8ter/ethresearch-rag"
+Source = "https://github.com/Intermountainh8ter/ethresearch-rag"
+Issues = "https://github.com/Intermountainh8ter/ethresearch-rag/issues"
+Changelog = "https://github.com/Intermountainh8ter/ethresearch-rag/blob/main/CHANGELOG.md"
+
 [project.scripts]
 ethrag = "ethrag.cli:main"
 

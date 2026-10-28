@@ -70,3 +70,18 @@ syntax newer than 3.10 (no `match` shortcuts, no PEP 695 generics, no PEP 701 f-
 
 Bump `version` in `pyproject.toml` and `__version__` in `src/ethrag/__init__.py`, move the
 CHANGELOG entry, tag. There is no PyPI package yet.
+
+## Publishing to PyPI
+
+Maintainer steps. Nothing is published until you do them; the workflow in `.github/workflows/publish.yml`
+only runs when a GitHub Release is published.
+
+1. On pypi.org, add a *pending trusted publisher* for the project name `ethrag`: owner `Intermountainh8ter`,
+   repository `ethresearch-rag`, workflow `publish.yml`, environment `pypi`. (No API token is needed or stored.)
+2. In this repository's Settings, create an environment named `pypi` (optionally with required reviewers).
+3. Make sure `version` in `pyproject.toml` is the version you want, and that CI is green on `main`.
+4. Create a GitHub Release whose tag is `v<version>` (for example `v0.2.0`). The workflow builds the
+   sdist and wheel, runs `twine check`, and uploads them.
+5. A PyPI version can never be re-uploaded, so check the built files first with `python -m build`
+   and `twine check dist/*`.
+6. The wheel contains the code only, not the 17,000-chunk corpus under data/. After pip install ethrag, point the CLI at a corpus with --data DIR (a clone of this repository has one in data/) or run scripts/fetch_corpus.py; without one, ethrag ask stops with a message saying so.
