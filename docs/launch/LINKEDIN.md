@@ -24,6 +24,6 @@ What I measured, on 504 synthetic questions with a train/test split I fixed befo
 The write-up says what the checker cannot catch (for example a chunk that mentions both 0xEF and
 0xFE will happily support a sentence that swaps them) and how the evaluation could be fooling me.
 
-Repository and the full evaluation write-up are linked in the first comment.
+Repository and the full evaluation write-up are linked in the first comment: https://github.com/Intermountainh8ter/ethresearch-rag
 
 #ethereum #rag #opensource #python

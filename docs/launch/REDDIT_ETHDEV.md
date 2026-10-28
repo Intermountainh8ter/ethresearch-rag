@@ -34,7 +34,8 @@ Things that did not go the way a README usually says:
 
 - **Hybrid is not clearly better than BM25.** +0.026 R@5, bootstrap interval [-0.020, +0.073].
   BM25 with the same EIP-number boost matches it. The "dense" side is hashed tf-idf, not a neural
-  embedding; I have not measured a real one.
+  embedding by default. I measured one real embedder once (bge-small): dense alone was worse (R@5 0.563 vs 0.609) and
+  hybrid R@5 did not change (0.815), so it did not help recall here.
 - The reranker's gain is partly a quirk of my question generator (some question types always
   point at Abstract chunks and the reranker learns that); without that tier it is 0.878 -> 0.931.
 - Graph expansion along `requires` edges did nothing for R@5.
@@ -50,3 +51,5 @@ offline extractive baseline verifies 138/151 but only 75 contain the reference v
 Python 3.10-3.13, numpy only, tests and evals offline. CLI, stdlib HTTP API, MCP stdio server.
 Everything is MIT; `docs/EVALUATION.md` has the methodology and the "what this cannot catch" list.
 I would like to hear which questions it gets wrong.
+
+Repo: https://github.com/Intermountainh8ter/ethresearch-rag

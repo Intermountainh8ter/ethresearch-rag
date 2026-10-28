@@ -4,7 +4,9 @@
 Not convincingly. On the held-out split (n = 151) the tuned hybrid has Recall@5 0.815 against
 0.788 for BM25: +0.026, paired-bootstrap 95% interval [-0.020, +0.073]. BM25 given the same
 EIP-number boost scores 0.821, so the small edge is the boost, not the fusion. The dense side is a
-hashed lexical baseline, so this says nothing about neural embeddings, which I did not evaluate.
+hashed lexical baseline. I ran one neural embedder (BAAI/bge-small-en-v1.5) once with the same train-only tuning: dense
+alone was worse on test (R@5 0.563 vs 0.609), hybrid R@5 was unchanged (0.815) and hybrid nDCG@10 was higher (0.688 vs
+0.649). That says nothing about other embedders.
 What did help is the logistic reranker (0.815 -> 0.934). See
 [EVALUATION.md](../EVALUATION.md#4-retrieval-results).
 
@@ -23,8 +25,9 @@ looked at failures on both splits while developing the verifier rules and retrie
 Treat test numbers as optimistic. The doc lists exactly what was and was not controlled.
 
 ### Was AI used to build this?
-Yes. The code, the hand-written seed questions and these documents were produced with an AI coding
-assistant. What you should rely on is not that, but that everything is checkable: the tests
+Yes. An AI coding assistant wrote most of the code, the hand-written seed questions and these documents (the commits are
+co-authored in the git history). I directed the work and ran the one neural-embedder comparison on my own hardware.
+What you should rely on is not that, but that everything is checkable: the tests
 (312, offline), the programmatic validators for every evaluation question, and the eval
 scripts that regenerate every number in the README. The one place a model name appears is the
 configurable default of the optional LLM generator.
@@ -58,8 +61,8 @@ learns section and kind priors. Without the purpose tier the gain is R@5 0.878 -
 
 ### Why numpy only? Why hashed embeddings?
 So `pip install` is trivial and CI needs no model download. The `Embedder` protocol and an optional
-`SentenceTransformerEmbedder` (extra `embed`) exist; the latter is not run in tests. A neural
-embedder is the first thing I would measure next.
+`SentenceTransformerEmbedder` (extra `embed`) exist; the latter is not run in tests, but I did run it once by hand
+(`--embedder neural`; log in `results/2026-10-14/`) and it did not improve R@5.
 
 ### How fresh is the corpus?
 A snapshot fetched on the date recorded in `data/MANIFEST.json`; refresh with
@@ -73,8 +76,8 @@ not evaluated here (no API key in my environment). Expect more rejections from `
 paraphrased text; `--min-coverage 0.5` is the first knob.
 
 ### Is it production ready?
-No. It is a careful prototype with an honest evaluation. Missing: neural retrieval, LLM-generated
-answer evaluation, streaming, auth on the HTTP server, rate limiting, non-English support, and
+No. It is a careful prototype with an honest evaluation. Missing: more than one neural embedder
+measured, LLM-generated answer evaluation, streaming, auth on the HTTP server, rate limiting, non-English support, and
 any guarantee about spec status or fork activation.
 
 ### How do I reproduce the numbers?

@@ -7,4 +7,4 @@ BASE_FEE_MAX_CHANGE_DENOMINATOR in EIP-1559?"` -> `8` + the source line. Wrong d
 
 Honest numbers (504 synthetic questions, test n=151): reranker R@5 0.934, hybrid 0.815 vs BM25
 0.788 (not significant). Checker accepts 97% of correct answers, 18% of swapped-value ones. Not
-correct != verified; blind spots documented. numpy only, offline tests, CLI / HTTP / MCP, MIT.
+correct != verified; blind spots documented. numpy only, offline tests, CLI / HTTP / MCP, MIT. https://github.com/Intermountainh8ter/ethresearch-rag
