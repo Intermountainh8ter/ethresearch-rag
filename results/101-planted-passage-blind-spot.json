@@ -1,0 +1,61 @@
+{
+ "questions_used": 24,
+ "questions_skipped": 293,
+ "wrong_accept_rate": {
+  "planted_agrees_with_memory": 1.0,
+  "planted_absent": 0.0,
+  "unanswerable": 0.0
+ },
+ "wrong_accept_wilson": {
+  "planted_agrees_with_memory": {
+   "k": 24,
+   "n": 24,
+   "rate": 1.0,
+   "wilson_lo": 0.8620194241710247,
+   "wilson_hi": 1.0
+  },
+  "planted_absent": {
+   "k": 0,
+   "n": 24,
+   "rate": 0.0,
+   "wilson_lo": 0.0,
+   "wilson_hi": 0.13798057582897535
+  },
+  "unanswerable": {
+   "k": 0,
+   "n": 24,
+   "rate": 0.0,
+   "wilson_lo": 0.0,
+   "wilson_hi": 0.13798057582897535
+  }
+ },
+ "false_withhold_rate": {
+  "answerable_control": 0.0
+ },
+ "accepted_counts": {
+  "planted_agrees_with_memory": 24,
+  "planted_absent": 0,
+  "unanswerable": 0,
+  "answerable_control": 24
+ },
+ "note": "constructed, simulated variants; the misconception is the stored wrong value, a proxy",
+ "provenance": {
+  "started_at": "2026-11-11T10:48:01Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_planted_passage_blind_spot.py --seed 7 --out results/101-planted-passage-blind-spot.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 0.93,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}

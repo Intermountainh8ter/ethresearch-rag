@@ -17,3 +17,13 @@
 **Expected.** At least 0.05 for the combined setting, below 0.01 for the shipped default.
 
 **Falsifier.** The pooled false-withhold rate at the combined strict setting is below 0.05, or the shipped-default rate is 0.01 or higher, or novelty issues are not the majority of added withholds.
+
+## 2026-11-11T10:48:01Z planted-passage-blind-spot proposal:84e81e4ca4cf3cf56aae425a44d08ac0f21ebc519b7f4e4053c83444f4b7caec
+
+**Hypothesis.** On constructed constant questions where the cited chunk is replaced by a planted copy that states a common-misconception value (the stored `wrong` value) next to the correct constant name, the shipped verifier (default settings) accepts the wrong answer in at least 0.50 of cases, because it checks that claims appear in the cited chunk and not that the chunk is authoritative; the same verifier accepts a wrong value in fewer than 0.05 of cases when the wrong value is absent from the cited chunk.
+
+**Metric.** /wrong_accept_rate/planted_agrees_with_memory in results/101-planted-passage-blind-spot.json (control: /wrong_accept_rate/planted_absent).
+
+**Expected.** At least 0.50 for planted-agrees-with-memory, below 0.05 for the planted-absent control.
+
+**Falsifier.** The wrong-accept rate for planted-agrees-with-memory variants is below 0.50, or the planted-absent control rate is 0.05 or higher.

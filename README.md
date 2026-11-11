@@ -241,3 +241,12 @@ On the 288 TRAIN+TEST questions whose offline extractive answer contains the ref
 0.0034722 and the combined strict setting (min_coverage 0.95, min_novelty 0.3, min_relevance 0.25)
 withholds a rate of 0.3159722. Of the 90 added withholds, 89 carry a novelty issue. Reproduce:
 `python3 evals/run_strictness_ladder_false_withhold.py --seed 7 --out results/68-strictness-ladder-false-withhold.json`.
+
+### Planted-passage blind spot (iteration 101)
+
+On 24 constructed, simulated constant-question variants (`results/101-planted-passage-blind-spot.json`),
+the shipped verifier accepts a wrong value at a rate of 1.0 when the cited chunk is a planted copy
+stating that value, and at a rate of 0.0 when the wrong value is absent from the cited chunk. The
+"misconception" is the stored `wrong` value, a proxy; 293 questions were skipped because their
+stored statement did not match the chunk text. Reproduce:
+`python3 evals/run_planted_passage_blind_spot.py --seed 7 --out results/101-planted-passage-blind-spot.json`.
