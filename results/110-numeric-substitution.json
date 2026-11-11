@@ -1,0 +1,41 @@
+{
+ "questions_used": 28,
+ "questions_skipped": 289,
+ "numeric_substitution": {
+  "false_accept_rate": 0.14285714285714285,
+  "wilson": {
+   "k": 4,
+   "n": 28,
+   "rate": 0.14285714285714285,
+   "wilson_lo": 0.056989129307017855,
+   "wilson_hi": 0.31490173044877334
+  },
+  "absent_value_false_accept_rate": 0.0,
+  "control_false_withhold_rate": 0.0
+ },
+ "accepted_counts": {
+  "in_chunk_swap": 4,
+  "absent_value": 0,
+  "control": 28
+ },
+ "note": "constructed, simulated answers; in-chunk swap uses any other integer token in the gold chunk",
+ "provenance": {
+  "started_at": "2026-11-11T11:08:55Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_numeric_substitution.py --seed 7 --out results/110-numeric-substitution.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 0.95,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}

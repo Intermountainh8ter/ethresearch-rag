@@ -27,3 +27,13 @@
 **Expected.** At least 0.50 for planted-agrees-with-memory, below 0.05 for the planted-absent control.
 
 **Falsifier.** The wrong-accept rate for planted-agrees-with-memory variants is below 0.50, or the planted-absent control rate is 0.05 or higher.
+
+## 2026-11-11T11:08:55Z numeric-substitution proposal:d16f204c06d4f0c1c7a11e29edc6f8ead4920b72d52a7c2cadb42f2986e93a11
+
+**Hypothesis.** On constant questions whose gold chunk contains at least one other numeric token, an answer that states a different in-chunk number for the constant is accepted by the default verifier at a rate below 0.05, while the unaltered control false-withhold rate stays below 0.05; a false-accept rate of 0.05 or more would show a name-binding blind spot.
+
+**Metric.** /numeric_substitution/false_accept_rate in results/110-numeric-substitution.json.
+
+**Expected.** Below 0.05 (name-adjacency binding rejects in-chunk swaps).
+
+**Falsifier.** A Wilson 95% lower bound for the in-chunk swap false-accept rate at or above 0.05, or a point estimate at or above 0.05.

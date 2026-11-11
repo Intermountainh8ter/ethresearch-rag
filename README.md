@@ -250,3 +250,12 @@ stating that value, and at a rate of 0.0 when the wrong value is absent from the
 "misconception" is the stored `wrong` value, a proxy; 293 questions were skipped because their
 stored statement did not match the chunk text. Reproduce:
 `python3 evals/run_planted_passage_blind_spot.py --seed 7 --out results/101-planted-passage-blind-spot.json`.
+
+### In-chunk numeric substitution (iteration 110)
+
+On 28 constructed, simulated constant questions (`results/110-numeric-substitution.json`), an answer
+that states the constant's name with a different number taken from the same cited chunk is accepted
+at a rate of 0.14285714285714285 (4 of 28, Wilson 95% lower bound 0.056989129307017855). This
+refutes the pre-registered expectation of a rate below 0.05. A number absent from the chunk is
+accepted at a rate of 0.0, and the correct-answer control false-withhold rate is 0.0. Reproduce:
+`python3 evals/run_numeric_substitution.py --seed 7 --out results/110-numeric-substitution.json`.
