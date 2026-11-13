@@ -37,3 +37,13 @@
 **Expected.** Below 0.05 (name-adjacency binding rejects in-chunk swaps).
 
 **Falsifier.** A Wilson 95% lower bound for the in-chunk swap false-accept rate at or above 0.05, or a point estimate at or above 0.05.
+
+## 2026-11-13T03:25:36Z leave-one-check-out proposal:bdfce43c9051baf4ca98216689d685bf01a0617b6e614c7490a0327ed2317ad3
+
+**Hypothesis.** On the stored answerable questions (train+test pooled, offline extractive drafts that contain the reference value), disabling any single verifier check (unsupported claim, citation, uncited, unit, range, binding, negation; relevance and coverage under the strict_combined setting) lowers the false-withhold rate by at most 0.02 absolute, i.e. no single check dominates the false withholds. A check is "disabled" by ignoring its issue type in the verdict of the same verification run.
+
+**Metric.** /leave_one_out/max_false_withhold_delta in results/135-leave-one-check-out.json.
+
+**Expected.** At most 0.02 (range 0.0 to 0.02).
+
+**Falsifier.** Any single leave-one-check-out arm lowering the false-withhold rate by more than 0.02 absolute with its Wilson interval for the arm rate excluding the full-verifier rate.

@@ -1,0 +1,149 @@
+{
+ "split": "train+test",
+ "population": 288,
+ "settings": {
+  "default": {
+   "full": {
+    "k": 1,
+    "n": 288,
+    "rate": 0.003472222222222222,
+    "wilson_lo": 0.0006131798857472621,
+    "wilson_hi": 0.01940315774398065
+   },
+   "arms": {
+    "unsupported_claim": {
+     "k": 1,
+     "n": 288,
+     "rate": 0.003472222222222222,
+     "wilson_lo": 0.0006131798857472621,
+     "wilson_hi": 0.01940315774398065,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    },
+    "binding": {
+     "k": 1,
+     "n": 288,
+     "rate": 0.003472222222222222,
+     "wilson_lo": 0.0006131798857472621,
+     "wilson_hi": 0.01940315774398065,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    },
+    "citation": {
+     "k": 1,
+     "n": 288,
+     "rate": 0.003472222222222222,
+     "wilson_lo": 0.0006131798857472621,
+     "wilson_hi": 0.01940315774398065,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    },
+    "uncited": {
+     "k": 1,
+     "n": 288,
+     "rate": 0.003472222222222222,
+     "wilson_lo": 0.0006131798857472621,
+     "wilson_hi": 0.01940315774398065,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    },
+    "unit": {
+     "k": 1,
+     "n": 288,
+     "rate": 0.003472222222222222,
+     "wilson_lo": 0.0006131798857472621,
+     "wilson_hi": 0.01940315774398065,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    },
+    "range": {
+     "k": 0,
+     "n": 288,
+     "rate": 0.0,
+     "wilson_lo": 0.0,
+     "wilson_hi": 0.01316330502573999,
+     "delta": 0.003472222222222222,
+     "interval_excludes_full": false
+    },
+    "negation": {
+     "k": 1,
+     "n": 288,
+     "rate": 0.003472222222222222,
+     "wilson_lo": 0.0006131798857472621,
+     "wilson_hi": 0.01940315774398065,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    },
+    "other": {
+     "k": 1,
+     "n": 288,
+     "rate": 0.003472222222222222,
+     "wilson_lo": 0.0006131798857472621,
+     "wilson_hi": 0.01940315774398065,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    }
+   },
+   "dominant_check": "range"
+  },
+  "strict_combined": {
+   "full": {
+    "k": 91,
+    "n": 288,
+    "rate": 0.3159722222222222,
+    "wilson_lo": 0.26500078876843874,
+    "wilson_hi": 0.3717884832202017
+   },
+   "arms": {
+    "relevance": {
+     "k": 90,
+     "n": 288,
+     "rate": 0.3125,
+     "wilson_lo": 0.26173142718669185,
+     "wilson_hi": 0.36820481219796075,
+     "delta": 0.00347222222222221,
+     "interval_excludes_full": false
+    },
+    "novelty": {
+     "k": 2,
+     "n": 288,
+     "rate": 0.006944444444444444,
+     "wilson_lo": 0.0019064476108571395,
+     "wilson_hi": 0.024962922622858687,
+     "delta": 0.3090277777777778,
+     "interval_excludes_full": true
+    },
+    "coverage": {
+     "k": 91,
+     "n": 288,
+     "rate": 0.3159722222222222,
+     "wilson_lo": 0.26500078876843874,
+     "wilson_hi": 0.3717884832202017,
+     "delta": 0.0,
+     "interval_excludes_full": false
+    }
+   },
+   "dominant_check": "novelty"
+  }
+ },
+ "leave_one_out": {
+  "max_false_withhold_delta": 0.3090277777777778,
+  "dominant_arm": "strict_combined/novelty",
+  "default_max_delta": 0.003472222222222222
+ },
+ "provenance": {
+  "started_at": "2026-11-13T03:25:54Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_leave_one_check_out.py --seed 7 --out results/135-leave-one-check-out.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 7.95,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}
