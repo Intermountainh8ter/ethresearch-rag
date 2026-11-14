@@ -57,3 +57,13 @@
 **Expected.** At least 0.90 (range 0.90 to 1.0).
 
 **Falsifier.** A stale_version pass_rate below 0.90 on the constructed set.
+
+## 2026-11-14T03:41:00Z quote-shape-blind-spot proposal:2a8dc68e3379863c5978abcd101b5966fed91c8d70057f90bb500e7e7d44620b
+
+**Hypothesis.** On constant questions (simulated answers quoting the cited chunk, default verifier), answers whose quote joins two source spans with an ellipsis are released at a rate of at least 0.90, because the verifier checks numbers and names against the cited chunk and not quote contiguity; mid-sentence truncations that cut off the claimed value are released under 0.10.
+
+**Metric.** /quote_shape/release_rate/ellipsis_join in results/165-quote-shape-blind-spot.json.
+
+**Expected.** At least 0.90 (range 0.90 to 1.0).
+
+**Falsifier.** An ellipsis_join release rate below 0.90 with at least 20 accepted cases, with the exact-quote control release rate at or above 0.90.
