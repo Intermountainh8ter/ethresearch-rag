@@ -1,0 +1,41 @@
+{
+ "questions_used": 316,
+ "questions_skipped": 1,
+ "stale_version": {
+  "pass_rate": 0.9272151898734177,
+  "wilson": {
+   "k": 293,
+   "n": 316,
+   "rate": 0.9272151898734177,
+   "wilson_lo": 0.8931544540892213,
+   "wilson_hi": 0.9510134090030093
+  }
+ },
+ "answerable_control": {
+  "false_withhold_rate": 0.05063291139240511
+ },
+ "accepted_counts": {
+  "stale_version": 293,
+  "control": 300
+ },
+ "note": "constructed, simulated stale chunks; the value line is preserved, other integers shifted by 1-9",
+ "provenance": {
+  "started_at": "2026-11-14T03:35:48Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_stale_version_blind_spot.py --seed 7 --out results/163-stale-version-blind-spot.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 1.06,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}

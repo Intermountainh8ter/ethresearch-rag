@@ -47,3 +47,13 @@
 **Expected.** At most 0.02 (range 0.0 to 0.02).
 
 **Falsifier.** Any single leave-one-check-out arm lowering the false-withhold rate by more than 0.02 absolute with its Wilson interval for the arm rate excluding the full-verifier rate.
+
+## 2026-11-14T03:35:47Z stale-version-blind-spot proposal:86107ca7c35fb435f40fc23bb8fa6825d21d3d04f6e71f7ced1a6af80d50b157
+
+**Hypothesis.** On constructed constant questions, the verifier releases answers citing a superseded-variant chunk (value line preserved, a status line changed to Superseded, all other integer parameters changed) at a rate of at least 0.90, because it checks only that claimed numbers and names appear in the cited chunk, not the document status. The answerable control (unaltered chunk) false-withhold rate stays below 0.10.
+
+**Metric.** /stale_version/pass_rate in results/163-stale-version-blind-spot.json.
+
+**Expected.** At least 0.90 (range 0.90 to 1.0).
+
+**Falsifier.** A stale_version pass_rate below 0.90 on the constructed set.
