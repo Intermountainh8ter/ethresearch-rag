@@ -67,3 +67,13 @@
 **Expected.** At least 0.90 (range 0.90 to 1.0).
 
 **Falsifier.** An ellipsis_join release rate below 0.90 with at least 20 accepted cases, with the exact-quote control release rate at or above 0.90.
+
+## 2026-11-17T14:42:06Z pooled-citation-gap proposal:7ed764b97ab49a1d500d5f3990e7ca43d12fd102dd6bffaa2dba53f9ecbf23af
+
+**Hypothesis.** On constant questions whose must_contain value line also occurs verbatim in a chunk of a different document, an answer citing [gold chunk with the value line removed, other-document chunk with the line] is released by the default verifier at a rate of at least 0.90, because support is pooled across cited chunks; in all released cases the first-cited (asked-about document) chunk lacks the claim, i.e. a per-citation check would reject them. The unaltered gold-only control false-withhold rate stays below 0.10.
+
+**Metric.** /pooled_citation/release_rate in results/374-pooled-citation-gap.json.
+
+**Expected.** At least 0.90 (range 0.90 to 1.0).
+
+**Falsifier.** A release rate below 0.90 with at least 50 questions used, with the control false-withhold rate below 0.10.

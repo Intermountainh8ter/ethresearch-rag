@@ -1,0 +1,39 @@
+{
+ "questions_used": 107,
+ "questions_skipped": 210,
+ "pooled_citation": {
+  "release_rate": 0.42990654205607476,
+  "wilson": {
+   "k": 46,
+   "n": 107,
+   "rate": 0.42990654205607476,
+   "wilson_lo": 0.34013913708365806,
+   "wilson_hi": 0.5245326107077849
+  },
+  "first_cited_lacks_claim": 107,
+  "first_cited_alone_rejected": 107
+ },
+ "answerable_control": {
+  "false_withhold_rate": 0.10280373831775702
+ },
+ "note": "constructed, simulated answers; the value line is removed from the gold chunk and supplied by a chunk of another document",
+ "provenance": {
+  "started_at": "2026-11-17T14:42:19Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_pooled_citation_gap.py --seed 7 --out results/374-pooled-citation-gap.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 2.4,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}
