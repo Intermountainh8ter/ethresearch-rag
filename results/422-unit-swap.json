@@ -1,0 +1,50 @@
+{
+ "questions_total": 317,
+ "questions_skipped": 301,
+ "control_exact": {
+  "k": 16,
+  "n": 16,
+  "rate": 1.0,
+  "wilson_lo": 0.8063865817272802,
+  "wilson_hi": 1.0
+ },
+ "unit_swap": {
+  "false_accept_rate": 0.875,
+  "k": 14,
+  "n": 16,
+  "rate": 0.875,
+  "wilson_lo": 0.6397666856325173,
+  "wilson_hi": 0.9650232506629428,
+  "min_n": 20,
+  "evaluable": false,
+  "units": [
+   "bytes",
+   "gwei",
+   "seconds",
+   "slots"
+  ],
+  "unit_used": {
+   "slots": 16
+  }
+ },
+ "note": "constructed, simulated answers citing the unaltered gold chunk; only questions of the form NAME = <integer>",
+ "provenance": {
+  "started_at": "2026-11-18T15:18:39Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_unit_swap.py --seed 7 --out results/422-unit-swap.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 0.77,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}

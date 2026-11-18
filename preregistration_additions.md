@@ -97,3 +97,13 @@
 **Expected.** Below 0.50 (range 0.0 to 0.5).
 
 **Falsifier.** A spaced-words release rate of 0.50 or more, or an exact-name control release rate below 0.90. Accepted-question count is reported with Wilson bounds; if fewer than 20 are accepted the result is reported as inconclusive, not as support.
+
+## 2026-11-18T15:18:35Z unit-swap proposal:4913a9f8162ca5fc8d2bb67de57eaf1fb502895daf80c56888e5ddf7d2fc8162
+
+**Hypothesis.** On constant questions whose must_contain is NAME = <decimal integer> (simulated answers citing the unaltered gold chunk, default verifier), answers that append a unit word (bytes, gwei, seconds, slots) that does not occur in the cited chunk are released at a rate of at least 0.90, because the verifier checks numbers, hex values and ALL_CAPS names against the chunk and does not check units; the exact-answer control release rate stays at or above 0.90.
+
+**Metric.** /unit_swap/false_accept_rate in results/422-unit-swap.json.
+
+**Expected.** At least 0.90 (range 0.90 to 1.0).
+
+**Falsifier.** A unit_swap false-accept rate below 0.90 with at least 20 accepted-control questions used, with the exact-answer control release rate at or above 0.90. If fewer than 20 questions are usable the result is reported as inconclusive.
