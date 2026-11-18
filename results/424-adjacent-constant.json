@@ -1,0 +1,41 @@
+{
+ "questions_total": 317,
+ "questions_skipped": 306,
+ "control_exact": {
+  "k": 11,
+  "n": 11,
+  "rate": 1.0,
+  "wilson_lo": 0.7411599827511859,
+  "wilson_hi": 1.0
+ },
+ "adjacent_constant": {
+  "false_accept_rate": 0.09090909090909091,
+  "k": 1,
+  "n": 11,
+  "rate": 0.09090909090909091,
+  "wilson_lo": 0.01623175226282597,
+  "wilson_hi": 0.3773646254862038,
+  "min_n": 20,
+  "evaluable": false
+ },
+ "note": "constructed, simulated answers citing the unaltered gold chunk; only questions of the form NAME = <integer>",
+ "provenance": {
+  "started_at": "2026-11-18T15:26:25Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_adjacent_constant.py --seed 7 --out results/424-adjacent-constant.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 0.74,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}

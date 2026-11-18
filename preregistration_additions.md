@@ -107,3 +107,13 @@
 **Expected.** At least 0.90 (range 0.90 to 1.0).
 
 **Falsifier.** A unit_swap false-accept rate below 0.90 with at least 20 accepted-control questions used, with the exact-answer control release rate at or above 0.90. If fewer than 20 questions are usable the result is reported as inconclusive.
+
+## 2026-11-18T15:26:13Z adjacent-constant proposal:ee9f7d27e242ec41da01228cab8882a244b591da5f848707d1c656115e5786b6
+
+**Hypothesis.** On constant questions whose must_contain is NAME = <decimal integer> and whose gold chunk holds at least one other 'OTHER = <integer>' line with a different value that does not occur elsewhere next to NAME, simulated answers 'NAME is <OTHER's value> [gold]' (default verifier, unaltered gold chunk, first such OTHER in file order) are released at a rate below 0.20 because the verifier binds each number to the name it is claimed for; the exact-answer control release rate stays at or above 0.90.
+
+**Metric.** /adjacent_constant/false_accept_rate in results/424-adjacent-constant.json.
+
+**Expected.** Below 0.20 (range 0.0 to 0.2).
+
+**Falsifier.** A false-accept rate of 0.20 or more with at least 20 usable questions, or an exact-answer control release rate below 0.90. If fewer than 20 questions are usable the result is inconclusive.
