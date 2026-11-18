@@ -137,3 +137,13 @@
 **Expected.** At least 0.50 (range 0.5 to 1.0).
 
 **Falsifier.** A 'differs from' release rate below 0.50 with at least 200 usable lines, or an exact-answer control release rate below 0.90; fewer than 20 usable lines is reported as inconclusive.
+
+## 2026-11-18T18:46:30Z multi-doc proposal:00ccf1266eeb1d4cf624aa03d62941159cbb73573e4a57a0e1aacd91a4f177b6
+
+**Hypothesis.** On constant questions of the form NAME = <decimal integer> (simulated answer 'NAME is <value>' citing the unaltered gold chunk plus three seeded distractor chunks from other documents, all retrieved, default verifier), the false-withhold rate is below 0.05 and differs from the gold-only control false-withhold rate by at most 0.02 in absolute terms, because the verifier checks each claim against the union of cited chunks and distractors add no conflicting claim.
+
+**Metric.** /multi_doc/false_withhold_rate in results/434-multi-doc.json.
+
+**Expected.** Below 0.05 (range 0.0 to 0.05), paired gap to the gold-only control within 0.02.
+
+**Falsifier.** A multi-document false-withhold rate of 0.05 or more, or an absolute gap to the control above 0.02, with at least 20 usable questions; fewer than 20 usable questions is reported as inconclusive.

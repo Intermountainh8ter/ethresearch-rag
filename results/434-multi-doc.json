@@ -1,0 +1,44 @@
+{
+ "questions_total": 317,
+ "questions_skipped": 301,
+ "distractors": 3,
+ "control_gold_only": {
+  "false_withhold_rate": 0.0,
+  "k": 0,
+  "n": 16,
+  "rate": 0.0,
+  "wilson_lo": 0.0,
+  "wilson_hi": 0.19361341827271994
+ },
+ "multi_doc": {
+  "false_withhold_rate": 0.0,
+  "k": 0,
+  "n": 16,
+  "rate": 0.0,
+  "wilson_lo": 0.0,
+  "wilson_hi": 0.19361341827271994,
+  "gap_to_control": 0.0,
+  "min_n": 20,
+  "evaluable": false
+ },
+ "note": "constructed, simulated answers citing the unaltered gold chunk plus seeded distractors from other documents",
+ "provenance": {
+  "started_at": "2026-11-18T18:46:30Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_multi_doc.py --seed 7 --distractors 3 --out results/434-multi-doc.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 0.78,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}
