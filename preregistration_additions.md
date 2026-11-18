@@ -87,3 +87,13 @@
 **Expected.** At least 0.95 (range 0.95 to 1.0).
 
 **Falsifier.** Any spelling variant with at least 20 accepted questions whose release rate is below 0.95 with its Wilson upper bound below 0.95.
+
+## 2026-11-18T15:13:48Z name-variants proposal:0c7e4575bab700ac1952b526a0575fe39d84630bbaf66d803bb320d7dbc9cff0
+
+**Hypothesis.** On constant questions whose must_contain is NAME = <decimal integer> (simulated answers citing the unaltered gold chunk, default verifier), answers that restate NAME as space-separated lowercase words or as camelCase are each released at a rate below 0.50, because the binding check matches the identifier token and not its prose form, while the exact-name control release rate stays at or above 0.90.
+
+**Metric.** /name_variants/release_rate/spaced in results/421-name-variants.json.
+
+**Expected.** Below 0.50 (range 0.0 to 0.5).
+
+**Falsifier.** A spaced-words release rate of 0.50 or more, or an exact-name control release rate below 0.90. Accepted-question count is reported with Wilson bounds; if fewer than 20 are accepted the result is reported as inconclusive, not as support.
