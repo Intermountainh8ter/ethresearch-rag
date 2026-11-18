@@ -127,3 +127,13 @@
 **Expected.** At least 0.90 (range 0.90 to 1.0).
 
 **Falsifier.** A negation false-accept rate below 0.90 with at least 20 usable questions and an exact-answer control release rate at or above 0.90; fewer than 20 usable questions is reported as inconclusive.
+
+## 2026-11-18T15:39:00Z unlisted-negators proposal:44ec67c7f15efda7bd6469975d9c4b13af4fdc64252813f805643df13ae22365
+
+**Hypothesis.** On NAME = <decimal integer> lines mined from corpus chunks (simulated answers citing the unaltered chunk, default verifier), answers 'NAME differs from <value>' are released at a rate of at least 0.50, because the negation pattern lists not, never, cannot, no longer, neither, nor, without, disallow, forbid, prohibit, unable and n't forms but not these wordings, and the verifier checks only that numbers and names occur in the chunk; the exact-answer control release rate stays at or above 0.90.
+
+**Metric.** /unlisted_negators/differs_from/rate in results/427-unlisted-negators.json.
+
+**Expected.** At least 0.50 (range 0.5 to 1.0).
+
+**Falsifier.** A 'differs from' release rate below 0.50 with at least 200 usable lines, or an exact-answer control release rate below 0.90; fewer than 20 usable lines is reported as inconclusive.

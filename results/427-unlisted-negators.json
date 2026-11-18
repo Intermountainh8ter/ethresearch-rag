@@ -1,0 +1,59 @@
+{
+ "lines_sampled": 52,
+ "control_exact": {
+  "k": 52,
+  "n": 52,
+  "rate": 1.0,
+  "wilson_lo": 0.9312054095871178,
+  "wilson_hi": 1.0
+ },
+ "unlisted_negators": {
+  "differs_from": {
+   "k": 52,
+   "n": 52,
+   "rate": 1.0,
+   "wilson_lo": 0.9312054095871178,
+   "wilson_hi": 1.0,
+   "min_n": 20,
+   "evaluable": true
+  },
+  "other_than": {
+   "k": 52,
+   "n": 52,
+   "rate": 1.0,
+   "wilson_lo": 0.9312054095871178,
+   "wilson_hi": 1.0,
+   "min_n": 20,
+   "evaluable": true
+  },
+  "anything_but": {
+   "k": 52,
+   "n": 52,
+   "rate": 1.0,
+   "wilson_lo": 0.9312054095871178,
+   "wilson_hi": 1.0,
+   "min_n": 20,
+   "evaluable": true
+  }
+ },
+ "note": "constructed, simulated answers citing the unaltered chunk; NAME = <integer> lines mined from the whole corpus",
+ "provenance": {
+  "started_at": "2026-11-18T15:39:00Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_unlisted_negators.py --seed 7 --max-lines 200 --out results/427-unlisted-negators.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 1.12,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}
