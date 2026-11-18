@@ -77,3 +77,13 @@
 **Expected.** At least 0.90 (range 0.90 to 1.0).
 
 **Falsifier.** A release rate below 0.90 with at least 50 questions used, with the control false-withhold rate below 0.10.
+
+## 2026-11-18T15:05:16Z spelling-variants proposal:1dfe53219118f3bf3779e9b3874ccb83dc81452237f259b61b2c617155c95dd6
+
+**Hypothesis.** On constant questions whose must_contain value is an integer, simulated answers that restate the value from the cited gold chunk in an equivalent spelling (decimal, hex, 2**n where a power of two, comma-grouped) are released by the default verifier at a rate of at least 0.95 per spelling, so spelling variation is not a dominant source of false withholds; the exact-spelling control release rate stays at or above 0.90.
+
+**Metric.** /spelling_variants/min_release_rate in results/419-spelling-variants.json.
+
+**Expected.** At least 0.95 (range 0.95 to 1.0).
+
+**Falsifier.** Any spelling variant with at least 20 accepted questions whose release rate is below 0.95 with its Wilson upper bound below 0.95.

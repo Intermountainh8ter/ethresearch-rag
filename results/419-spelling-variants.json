@@ -1,0 +1,59 @@
+{
+ "questions_total": 317,
+ "questions_skipped": 301,
+ "control_exact": {
+  "k": 16,
+  "n": 16,
+  "rate": 1.0,
+  "wilson_lo": 0.8063865817272802,
+  "wilson_hi": 1.0
+ },
+ "spelling_variants": {
+  "by_spelling": {
+   "hex": {
+    "k": 16,
+    "n": 16,
+    "rate": 1.0,
+    "wilson_lo": 0.8063865817272802,
+    "wilson_hi": 1.0
+   },
+   "pow2": {
+    "k": 8,
+    "n": 8,
+    "rate": 1.0,
+    "wilson_lo": 0.6755843804891231,
+    "wilson_hi": 1.0
+   },
+   "comma": {
+    "k": 5,
+    "n": 5,
+    "rate": 1.0,
+    "wilson_lo": 0.5655085052479191,
+    "wilson_hi": 1.0
+   }
+  },
+  "min_n": 20,
+  "min_release_rate": 1.0,
+  "falsifier_evaluable_spellings": []
+ },
+ "note": "constructed, simulated answers citing the unaltered gold chunk; only questions of the form NAME = <integer>",
+ "provenance": {
+  "started_at": "2026-11-18T15:05:39Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_spelling_variants.py --seed 7 --out results/419-spelling-variants.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 0.82,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}
