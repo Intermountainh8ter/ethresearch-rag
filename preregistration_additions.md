@@ -117,3 +117,13 @@
 **Expected.** Below 0.20 (range 0.0 to 0.2).
 
 **Falsifier.** A false-accept rate of 0.20 or more with at least 20 usable questions, or an exact-answer control release rate below 0.90. If fewer than 20 questions are usable the result is inconclusive.
+
+## 2026-11-18T15:30:37Z negation proposal:c177b80c7660f5a57336644b51dd6d430a26d8c1a67722a383a8a80abfe5016e
+
+**Hypothesis.** On constant questions whose must_contain is NAME = <decimal integer> (simulated answers citing the unaltered gold chunk, default verifier), negated answers 'NAME is not <value>' are released at a rate of at least 0.90, because the verifier checks that numbers, hex values and ALL_CAPS names occur in the cited chunk and does not check polarity; the exact-answer control release rate stays at or above 0.90.
+
+**Metric.** /negation/false_accept_rate in results/425-negation.json.
+
+**Expected.** At least 0.90 (range 0.90 to 1.0).
+
+**Falsifier.** A negation false-accept rate below 0.90 with at least 20 usable questions and an exact-answer control release rate at or above 0.90; fewer than 20 usable questions is reported as inconclusive.
