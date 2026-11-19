@@ -147,3 +147,13 @@
 **Expected.** Below 0.05 (range 0.0 to 0.05), paired gap to the gold-only control within 0.02.
 
 **Falsifier.** A multi-document false-withhold rate of 0.05 or more, or an absolute gap to the control above 0.02, with at least 20 usable questions; fewer than 20 usable questions is reported as inconclusive.
+
+## 2026-11-19T19:12:24Z parametric proposal:79d2d6a966805d2ba165161aaaeb5e5cab25ba748de5850e8c1faa2d0b721d61
+
+**Hypothesis.** On NAME = <decimal integer> lines mined from corpus chunks (simulated true answers 'NAME is <value>' citing a different chunk of the same document that does not contain that line, retrieved, default verifier, offline), the release rate is below 0.05, because the verifier requires the name and value to be found together in the cited chunk; the supported control (citing the chunk that holds the line) is released at a rate of at least 0.90.
+
+**Metric.** /parametric/false_accept_rate in results/542-parametric.json.
+
+**Expected.** Below 0.05 (range 0.0 to 0.05); control release rate at or above 0.90.
+
+**Falsifier.** A parametric false-accept rate of 0.05 or more with at least 200 usable lines, or a supported-control release rate below 0.90; fewer than 20 usable lines is reported as inconclusive.

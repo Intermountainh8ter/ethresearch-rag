@@ -1,0 +1,47 @@
+{
+ "lines_mined": 105,
+ "control_supported": {
+  "k": 105,
+  "n": 105,
+  "rate": 1.0,
+  "wilson_lo": 0.9647046717431569,
+  "wilson_hi": 0.9999999999999998
+ },
+ "parametric": {
+  "false_accept_rate": 0.0,
+  "k": 0,
+  "n": 105,
+  "rate": 0.0,
+  "wilson_lo": 0.0,
+  "wilson_hi": 0.035295328256842964,
+  "min_n": 20,
+  "evaluable": true
+ },
+ "parametric_name_absent": {
+  "k": 0,
+  "n": 88,
+  "rate": 0.0,
+  "wilson_lo": 3.469446951953614e-18,
+  "wilson_hi": 0.04182853957248131
+ },
+ "note": "constructed, simulated true answers; cited chunk is another chunk of the same document without the line",
+ "provenance": {
+  "started_at": "2026-11-19T19:12:25Z",
+  "seeds": [
+   7
+  ],
+  "command": "python3 evals/run_parametric.py --seed 7 --out results/542-parametric.json",
+  "hardware": "x86_64 Linux cpu, python 3.11.2",
+  "wall_s": 1.02,
+  "data_sources": [
+   {
+    "url": "https://github.com/ethereum/EIPs",
+    "license": "CC0-1.0"
+   },
+   {
+    "url": "https://github.com/ethereum/ERCs",
+    "license": "CC0-1.0"
+   }
+  ]
+ }
+}

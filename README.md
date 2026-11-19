@@ -259,3 +259,11 @@ at a rate of 0.14285714285714285 (4 of 28, Wilson 95% lower bound 0.056989129307
 refutes the pre-registered expectation of a rate below 0.05. A number absent from the chunk is
 accepted at a rate of 0.0, and the correct-answer control false-withhold rate is 0.0. Reproduce:
 `python3 evals/run_numeric_substitution.py --seed 7 --out results/110-numeric-substitution.json`.
+
+## Parametric answers (iteration 542)
+
+`evals/run_parametric.py` mines `NAME = <integer>` lines (105 mined) and asks the default verifier
+to release the true answer `NAME is <value>` when it cites another chunk of the same document that
+lacks the line. Release rate 0.0 (0 of 105, Wilson 95% upper bound 0.0353); the supported control
+is released 105 of 105. Results: `results/542-parametric.json`; reproduce with
+`python3 evals/run_parametric.py --seed 7 --out results/542-parametric.json`. Constructed answers, not model output.
